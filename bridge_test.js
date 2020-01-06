@@ -7,13 +7,8 @@ controller
   .getConfig()
   .then(config => {
     console.log('got config:', util.inspect(config, { depth: 10 }))
+    return controller.getStatus()
   })
-  .catch(err => {
-    console.log('caught error:', err)
-  })
-
-controller
-  .getStatus()
   .then(status => {
     console.log('got status:', util.inspect(status, { depth: 10 }))
   })
