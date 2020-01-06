@@ -6,7 +6,16 @@ let controller = new Bridge.Controller({ ip_address: '192.168.86.143' })
 controller
   .getConfig()
   .then(config => {
-    console.log('got the config:', util.inspect(config, { depth: 10 }))
+    console.log('got config:', util.inspect(config, { depth: 10 }))
+  })
+  .catch(err => {
+    console.log('caught error:', err)
+  })
+
+controller
+  .getStatus()
+  .then(status => {
+    console.log('got status:', util.inspect(status, { depth: 10 }))
   })
   .catch(err => {
     console.log('caught error:', err)
