@@ -3,6 +3,7 @@
 const Bridge = require('./lib/Bridge')
 
 let Accessory, Service, Characteristic, uuid
+let BlindAccessory
 
 module.exports = function(homebridge) {
   Accessory = homebridge.hap.Accessory
@@ -18,6 +19,8 @@ module.exports = function(homebridge) {
     uuid: uuid
   }
 
+  BlindAccessory = require('./lib/BlindAccessory')(exportedTypes)
+
   homebridge.registerPlatform(
     'homebridge-hunterdouglas-platinum',
     'HunterDouglasPlatinum',
@@ -31,6 +34,7 @@ class HunterDouglasPlatinumPlatform {
   constructor(log, config) {
     this.log = log
     this.config = config
+    this.blindAccessories = []
     this.pendingRefreshPromise = null
     this.blindController = new Bridge.Controller(config)
   }
@@ -53,24 +57,24 @@ class HunterDouglasPlatinumPlatform {
   async _accessories() {
     this.blindConfig = await this.blindController.getBlindConfig()
 
-    // // filter out hidden circuits
-    // const hiddenCircuits = this.config.hidden_circuits || ''
-    // const hiddenCircuitNames = hiddenCircuits.split(',').map(item => item.trim())
-
-    // this.poolConfig.circuits = this.blindConfig.circuits.filter(circuit => {
-    //   return hiddenCircuitNames.indexOf(circuit.name) == -1
-    // })
-
-    this.device_id = this.poolConfig.gatewayName.replace('Pentair: ', '')
+    this.device_id = this.blindConfig.serialNumber
 
     this.log.info(
       'connected:',
       this.poolConfig.gatewayName,
       this.poolConfig.softwareVersion,
-      '(getPoolConfig)'
+      '(getBlindConfig)'
     )
 
     var accessories = []
+
+    for (const [_shadeId, shade] of this.blindConfig.shades) {
+      const room = this.blindConfig.rooms.get(shade.roomId).name
+      const blind = new BlindAccessory(room.name + ' ' + shade.name, shade.id, shade.roomId, this)
+      accessories.push(blind)
+    }
+
+    this.blindAccessories = accessories
 
     // start polling for status
     this._pollForStatus(0)
@@ -120,9 +124,9 @@ class HunterDouglasPlatinumPlatform {
   /** gets status,  updates accessories, and resolves */
   async _refreshStatus() {
     try {
-      const poolStatus = await this.poolController.getBlindStatus()
-      this.log.debug('connected:', this.poolConfig.gatewayName, '(getBlindStatus)')
-      this._updateAccessories(poolStatus, null)
+      const blindStatus = await this.blindController.getBlindStatus()
+      this.log.debug('connected:', this.blindConfig.serialNumber, '(getBlindStatus)')
+      this._updateAccessories(blindStatus, null)
       return null
     } catch (err) {
       this.log.error('error getting pool status', err)
@@ -132,12 +136,13 @@ class HunterDouglasPlatinumPlatform {
   }
 
   /** updates all accessory data with latest values after a refresh */
-  _updateAccessories(_status, _err) {
-    //const fault = err ? true : false
-  }
-
-  async setCircuitState(circuitId, circuitState) {
-    return this.poolController.setCircuitState(circuitId, circuitState)
+  _updateAccessories(status, err) {
+    const fault = err ? true : false
+    for (const accessory of this.blindAccessories) {
+      accessory.faultStatus = fault
+      accessory.currentPosition = status.get(accessory.blindId) / 255
+      accessory.targetPosition = status.get(accessory.blindId) / 255
+    }
   }
 
   /** convenience method for accessories */
@@ -148,7 +153,7 @@ class HunterDouglasPlatinumPlatform {
       .setCharacteristic(Characteristic.FirmwareRevision, '')
       // store software version in model, since it doesn't follow
       // proper n.n.n format Apple requires and model is a string
-      .setCharacteristic(Characteristic.Model, this.poolConfig.softwareVersion)
+      .setCharacteristic(Characteristic.Model, this.blindConfig.softwareVersion)
       .setCharacteristic(Characteristic.SerialNumber, this.device_id)
     return informationService
   }

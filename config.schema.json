@@ -35,13 +35,6 @@
         "required": false,
         "description": "Optional. Only needed if going through Pentair servers."
       },
-      "hidden_circuits": {
-        "title": "Hidden Circuits",
-        "type": "string",
-        "placeholder": "hidden circuits",
-        "required": false,
-        "description": "Optional. Comma-seperated list of circuit names to hide."
-      },
       "statusPollingSeconds": {
         "title": "Status Polling (Seconds)",
         "type": "integer",
