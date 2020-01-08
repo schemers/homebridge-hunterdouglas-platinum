@@ -33,18 +33,6 @@ Use this when you know the local static IP address.
 
 # Implemented HomeKit Accessory Types
 
-## Air Temperature
-
-- _TemperatureSensor_ accessory (Air) indicating the ambient temperature where thee screenlogic hardware is located
-
-## Pool
-
-- _TemperatureSensor_ accessory (Pool) indicating the ambient temperature of the pool (last known temperature if pool isn't running)
-
-## Spa
-
-- _TemperatureSensor_ accessory (Spa) indicating the ambient temperature of the Spa (last known temperature if pool isn't running)
-
 ## WindowCovering
 
 - creates a _WindowCovering_ accessory for each discovered blind
