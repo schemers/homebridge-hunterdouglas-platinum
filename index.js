@@ -139,7 +139,7 @@ class HunterDouglasPlatinumPlatform {
   _updateAccessories(status, err) {
     const fault = err ? true : false
     for (const accessory of this.blindAccessories) {
-      let position = (status.shades.get(accessory.blindId) / 255) * 100
+      let position = Math.round((status.shades.get(accessory.blindId) / 255) * 100)
       accessory.faultStatus = fault
       accessory.currentPosition = position
       accessory.targetPosition = position
