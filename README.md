@@ -1,4 +1,4 @@
-# homebridge-screenlogic
+# homebridge-hunterdouglas-platinum
 
 Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
