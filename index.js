@@ -55,21 +55,21 @@ class HunterDouglasPlatinumPlatform {
   }
 
   async _accessories() {
-    this.blindConfig = await this.blindController.getBlindConfig()
+    this.blindConfig = await this.blindController.getConfig()
 
     this.device_id = this.blindConfig.serialNumber
 
     this.log.info(
       'connected:',
-      this.poolConfig.gatewayName,
-      this.poolConfig.softwareVersion,
+      this.blindConfig.serialNumber,
+      this.blindConfig.softwareVersion,
       '(getBlindConfig)'
     )
 
     var accessories = []
 
     for (const [_shadeId, shade] of this.blindConfig.shades) {
-      const room = this.blindConfig.rooms.get(shade.roomId).name
+      const room = this.blindConfig.rooms.get(shade.roomId)
       const blind = new BlindAccessory(room.name + ' ' + shade.name, shade.id, shade.roomId, this)
       accessories.push(blind)
     }
@@ -124,12 +124,12 @@ class HunterDouglasPlatinumPlatform {
   /** gets status,  updates accessories, and resolves */
   async _refreshStatus() {
     try {
-      const blindStatus = await this.blindController.getBlindStatus()
-      this.log.debug('connected:', this.blindConfig.serialNumber, '(getBlindStatus)')
+      const blindStatus = await this.blindController.getStatus()
+      this.log.debug('connected:', this.blindConfig.serialNumber, '(getStatus)')
       this._updateAccessories(blindStatus, null)
       return null
     } catch (err) {
-      this.log.error('error getting pool status', err)
+      this.log.error('error getting blind status', err)
       this._updateAccessories(null, err)
       throw err
     }
@@ -139,9 +139,10 @@ class HunterDouglasPlatinumPlatform {
   _updateAccessories(status, err) {
     const fault = err ? true : false
     for (const accessory of this.blindAccessories) {
+      let position = (status.shades.get(accessory.blindId) / 255) * 100
       accessory.faultStatus = fault
-      accessory.currentPosition = status.get(accessory.blindId) / 255
-      accessory.targetPosition = status.get(accessory.blindId) / 255
+      accessory.currentPosition = position
+      accessory.targetPosition = position
     }
   }
 
