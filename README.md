@@ -2,6 +2,8 @@
 
 Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
+**Note: This plugin is still in early development**
+
 # Installation
 
 <!-- 2. Clone (or pull) this repository from github into the same path Homebridge lives (usually `/usr/local/lib/node_modules`). Note: the code currently on GitHub is in beta, and is newer than the latest published version of this package on `npm` -->
