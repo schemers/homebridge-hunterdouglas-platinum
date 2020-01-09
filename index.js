@@ -34,7 +34,7 @@ class HunterDouglasPlatinumPlatform {
   constructor(log, config) {
     this.log = log
     this.config = config
-    this.blindAccessories = []
+    this.blindAccessories = new Map()
     this.pendingRefreshPromise = null
     this.blindController = new Bridge.Controller(config)
   }
@@ -69,12 +69,14 @@ class HunterDouglasPlatinumPlatform {
     var accessories = []
 
     for (const [_shadeId, shade] of this.blindConfig.shades) {
-      const room = this.blindConfig.rooms.get(shade.roomId)
-      const blind = new BlindAccessory(room.name + ' ' + shade.name, shade.id, shade.roomId, this)
+      //const room = this.blindConfig.rooms.get(shade.roomId)
+      //const name = room.name + ' ' + shade.name
+      const name = shade.name
+
+      const blind = new BlindAccessory(name, shade.id, shade.roomId, this)
+      this.blindAccessories.set(shade.id, blind)
       accessories.push(blind)
     }
-
-    this.blindAccessories = accessories
 
     // start polling for status
     this._pollForStatus(0)
@@ -138,12 +140,20 @@ class HunterDouglasPlatinumPlatform {
   /** updates all accessory data with latest values after a refresh */
   _updateAccessories(status, err) {
     const fault = err ? true : false
-    for (const accessory of this.blindAccessories) {
+    for (const [_key, accessory] of this.blindAccessories) {
       let position = Math.round((status.shades.get(accessory.blindId) / 255) * 100)
       accessory.faultStatus = fault
       accessory.currentPosition = position
       accessory.targetPosition = position
     }
+  }
+
+  async setTargetPosition(blindId, position) {
+    const blindPosition = (position / 100) * 255
+    this.log.debug('setTargetPosition:', blindId, position, blindPosition)
+    await this.blindController.setPosition([blindId], blindPosition)
+    let blindAccessory = this.blindAccessories.get(blindId)
+    blindAccessory.currentPosition = blindPosition
   }
 
   /** convenience method for accessories */
