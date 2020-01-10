@@ -141,7 +141,7 @@ class HunterDouglasPlatinumPlatform {
   _updateAccessories(status, err) {
     const fault = err ? true : false
     for (const [_key, accessory] of this.blindAccessories) {
-      let position = Math.round((status.shades.get(accessory.blindId) / 255) * 100)
+      let position = this.posToHomeKit(status.shades.get(accessory.blindId))
       accessory.faultStatus = fault
       accessory.currentPosition = position
       accessory.targetPosition = position
@@ -149,11 +149,11 @@ class HunterDouglasPlatinumPlatform {
   }
 
   async setTargetPosition(blindId, position) {
-    const blindPosition = (position / 100) * 255
-    this.log.debug('setTargetPosition:', blindId, position, blindPosition)
-    await this.blindController.setPosition([blindId], blindPosition)
+    const nativePosition = this.homeKitToPos(position)
+    this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
+    await this.blindController.setPosition([blindId], nativePosition)
     let blindAccessory = this.blindAccessories.get(blindId)
-    blindAccessory.currentPosition = blindPosition
+    blindAccessory.currentPosition = position
   }
 
   /** convenience method for accessories */
@@ -178,5 +178,25 @@ class HunterDouglasPlatinumPlatform {
         .then(() => callback(null, this.value))
         .catch(err => callback(err, null))
     })
+  }
+
+  /**
+   * convert native blind position (0-255) to HomeKit (0-100)
+   *
+   * @param {number} pos
+   * @memberof HunterDouglasPlatinumPlatform
+   */
+  posToHomeKit(pos) {
+    return Math.round((pos / 255) * 100)
+  }
+
+  /**
+   * convert native blind position (0-255) to HomeKit (0-100)
+   *
+   * @param {number} pos
+   * @memberof HunterDouglasPlatinumPlatform
+   */
+  homeKitToPos(pos) {
+    return Math.round((pos / 100) * 255)
   }
 }
