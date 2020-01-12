@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.1.1 - 2020-1-12
+
+### Fixed
+
+- properly apply default values from config
+
 ## V1.1.0 - 2020-1-12
 
 ### Added

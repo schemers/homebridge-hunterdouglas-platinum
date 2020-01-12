@@ -40,14 +40,26 @@ class HunterDouglasPlatinumPlatform {
     this.config = config
 
     // apply defaults
-    this.config.statusPollingSeconds = config.statusPollingSeconds || DEFAULT_STATUS_POLLING_SECONDS
-    this.config.setPositionDelayMsecs =
-      config.setPositionDelayMsecs || DEFAULT_SET_POSITION_DELAY_MSECS
-    this.config.createVirtualRoomBlind =
-      config.createVirtualRoomBlind || DEFAULT_CREATE_VIRTUAL_ROOM_BLIND
-    this.config.createDiscreteBlinds = config.createDiscreteBlinds || DEFAULT_CREATE_DISCRETE_BLINDS
-    this.config.prefixRoomNameToBlindName =
-      config.prefixRoomNameToBlindName || DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME
+    this.config.statusPollingSeconds = configDefault(
+      config.statusPollingSeconds,
+      DEFAULT_STATUS_POLLING_SECONDS
+    )
+    this.config.setPositionDelayMsecs = configDefault(
+      config.setPositionDelayMsecs,
+      DEFAULT_SET_POSITION_DELAY_MSECS
+    )
+    this.config.createVirtualRoomBlind = configDefault(
+      config.createVirtualRoomBlind,
+      DEFAULT_CREATE_VIRTUAL_ROOM_BLIND
+    )
+    this.config.createDiscreteBlinds = configDefault(
+      config.createDiscreteBlinds,
+      DEFAULT_CREATE_DISCRETE_BLINDS
+    )
+    this.config.prefixRoomNameToBlindName = configDefault(
+      config.prefixRoomNameToBlindName,
+      DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME
+    )
 
     this.blindAccessories = new Map()
     this.roomBlindAccessories = new Map()
@@ -283,4 +295,8 @@ class HunterDouglasPlatinumPlatform {
   normalizedPos(pos) {
     return this.homeKitToPos(this.posToHomeKit(pos))
   }
+}
+
+function configDefault(value, defaultValue) {
+  return value === null || value === undefined ? defaultValue : value
 }
