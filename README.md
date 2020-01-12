@@ -2,8 +2,6 @@
 
 Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
-**Note: This plugin is still in early development**
-
 <img src="https://i.imgur.com/g9Mwn3S.jpg" width="300">
 
 # Installation
