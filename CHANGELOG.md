@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-...
+### Fixed
+
+- don't log at info level in BlindAccessory
 
 ## V1.1.2 - 2020-1-12
 
