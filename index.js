@@ -102,11 +102,22 @@ class HunterDouglasPlatinumPlatform {
     if (this.config.createDiscreteBlinds) {
       const prefixName = this.config.prefixRoomNameToBlindName
 
+      // show only visible blinds
+      const visibleNames = this.config.visibleBlindNames || ''
+      const visibleBlinds = new Set(
+        visibleNames ? visibleNames.split(',').map(item => item.trim()) : []
+      )
+
       for (const [_shadeId, shade] of this.blindConfig.shades) {
         const room = this.blindConfig.rooms.get(shade.roomId)
+
+        if (visibleNames && !visibleBlinds.has((room.name + ' ' + shade.name).trim())) {
+          continue
+        }
+
         const name = prefixName ? room.name + ' ' + shade.name : shade.name
 
-        const blind = new BlindAccessory(name, shade.id, shade.roomId, this)
+        const blind = new BlindAccessory(name.trim(), shade.id, shade.roomId, this)
         this.blindAccessories.set(shade.id, blind)
         accessories.push(blind)
       }

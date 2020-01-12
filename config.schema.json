@@ -43,7 +43,7 @@
         "description": "Creates a virtual blind for each room that contains all the blinds in the room. Default is true."
       },
       "createDiscreteBlinds": {
-        "title": "Create Discrete Blind",
+        "title": "Create Discrete Blinds",
         "type": "boolean",
         "default": true,
         "description": "Creates a blind for each real blind."
@@ -53,6 +53,13 @@
         "type": "boolean",
         "default": true,
         "description": "Prefix the room name to each discrete blind name."
+      },
+      "visibleBlindNames": {
+        "title": "Visible Blind Names",
+        "type": "string",
+        "placeholder": "visible blind names",
+        "required": false,
+        "description": "Optional. Comma-seperated list of blind names (prefixed with room name) to make visible. All other blinds are ignored. Used only if 'Create Discrete Blinds' is true."
       }
     }
   }

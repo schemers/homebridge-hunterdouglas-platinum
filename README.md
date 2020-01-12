@@ -41,8 +41,12 @@ Use this when you know the local static IP address.
 
 * `"prefixRoomNameToBlindName"` Prefix the room name to each discrete blind name. Default is true.
 
+* `"visibleBlindNames"` Comma-seperated list of blind names (prefixed with room name) to make visible. All other blinds are ignored. Only used when `createDiscreteBlinds` is true.
+
 # Implemented HomeKit Accessory Types
 
 ## WindowCovering
 
-- creates a _WindowCovering_ accessory for each discovered blind
+- creates a _WindowCovering_ accessory for each discovered blind if `createDiscreteBlinds` is true
+
+- creates a _WindowCovering_ accessory for each discovered room if `createVirtualRoomBlind` is true
