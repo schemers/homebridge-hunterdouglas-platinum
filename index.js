@@ -199,9 +199,10 @@ class HunterDouglasPlatinumPlatform {
 
     // update any virtual room blinds
     for (const [_key, accessory] of this.roomBlindAccessories) {
-      // get first blind id
-      let blindId = accessory.blindId.split(',')[0]
-      let position = this.posToHomeKit(status.shades.get(blindId))
+      // take average of all blinds
+      let blindIds = accessory.blindId.split(',')
+      let sum = blindIds.map(id => status.shades.get(id)).reduce((sum, value) => sum + value, 0)
+      let position = this.posToHomeKit(sum / blindIds.length)
       accessory.faultStatus = fault
       accessory.currentPosition = position
       accessory.targetPosition = position

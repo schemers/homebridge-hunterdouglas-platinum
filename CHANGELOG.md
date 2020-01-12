@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- use the average of all blind positions in the room for the value of the virtual room
+  blind
+
 ### Fixed
 
 - don't log at info level in BlindAccessory

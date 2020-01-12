@@ -1,4 +1,4 @@
-h# homebridge-hunterdouglas-platinum
+# homebridge-hunterdouglas-platinum
 
 Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
@@ -35,7 +35,7 @@ Use this when you know the local static IP address.
 
 * `"setPositionDelayMsecs"` time in msecs to delay setting blind positions. This smooths things out when you are dragging slider. Default is 2500 msecs.
 
-* `"createVirtualRoomBlind"` Creates a virtual blind for each room that contains all the blinds in the room. Default is true. Changing this blind will change all blinds in the room.
+* `"createVirtualRoomBlind"` Creates a virtual blind for each room that contains all the blinds in the room. Default is true. Changing this blind will change all blinds in the room. Position is set to the average position of all blinds in the room.
 
 * `"createDiscreteBlinds"` Creates a blind for each real blind. Default is true. You might want to turn this off if you want only the virtual room blind.
 
