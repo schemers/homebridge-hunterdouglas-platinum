@@ -1,4 +1,4 @@
-# homebridge-hunterdouglas-platinum
+h# homebridge-hunterdouglas-platinum
 
 Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
@@ -34,6 +34,12 @@ Use this when you know the local static IP address.
 - `"statusPollingSeconds"` time in seconds to poll for blind positions. Default is 60 seconds.
 
 * `"setPositionDelayMsecs"` time in msecs to delay setting blind positions. This smooths things out when you are dragging slider. Default is 2500 msecs.
+
+* `"createVirtualRoomBlind"` Creates a virtual blind for each room that contains all the blinds in the room. Default is true. Changing this blind will change all blinds in the room.
+
+* `"createDiscreteBlinds"` Creates a blind for each real blind. Default is true. You might want to turn this off if you want only the virtual room blind.
+
+* `"prefixRoomNameToBlindName"` Prefix the room name to each discrete blind name. Default is true.
 
 # Implemented HomeKit Accessory Types
 

@@ -30,12 +30,28 @@ module.exports = function(homebridge) {
 
 const DEFAULT_STATUS_POLLING_SECONDS = 60
 const DEFAULT_SET_POSITION_DELAY_MSECS = 2500
+const DEFAULT_CREATE_VIRTUAL_ROOM_BLIND = true
+const DEFAULT_CREATE_DISCRETE_BLINDS = true
+const DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME = true
 
 class HunterDouglasPlatinumPlatform {
   constructor(log, config) {
     this.log = log
     this.config = config
+
+    // apply defaults
+    this.config.statusPollingSeconds = config.statusPollingSeconds || DEFAULT_STATUS_POLLING_SECONDS
+    this.config.setPositionDelayMsecs =
+      config.setPositionDelayMsecs || DEFAULT_SET_POSITION_DELAY_MSECS
+    this.config.createVirtualRoomBlind =
+      config.createVirtualRoomBlind || DEFAULT_CREATE_VIRTUAL_ROOM_BLIND
+    this.config.createDiscreteBlinds = config.createDiscreteBlinds || DEFAULT_CREATE_DISCRETE_BLINDS
+    this.config.prefixRoomNameToBlindName =
+      config.prefixRoomNameToBlindName || DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME
+
     this.blindAccessories = new Map()
+    this.roomBlindAccessories = new Map()
+
     this.pendingRefreshPromise = null
     this.blindController = new Bridge.Controller(config)
     // map from blind id to pending timer that will ultimately set position
@@ -71,14 +87,26 @@ class HunterDouglasPlatinumPlatform {
 
     var accessories = []
 
-    for (const [_shadeId, shade] of this.blindConfig.shades) {
-      //const room = this.blindConfig.rooms.get(shade.roomId)
-      //const name = room.name + ' ' + shade.name
-      const name = shade.name
+    if (this.config.createDiscreteBlinds) {
+      const prefixName = this.config.prefixRoomNameToBlindName
 
-      const blind = new BlindAccessory(name, shade.id, shade.roomId, this)
-      this.blindAccessories.set(shade.id, blind)
-      accessories.push(blind)
+      for (const [_shadeId, shade] of this.blindConfig.shades) {
+        const room = this.blindConfig.rooms.get(shade.roomId)
+        const name = prefixName ? room.name + ' ' + shade.name : shade.name
+
+        const blind = new BlindAccessory(name, shade.id, shade.roomId, this)
+        this.blindAccessories.set(shade.id, blind)
+        accessories.push(blind)
+      }
+    }
+
+    if (this.config.createVirtualRoomBlind) {
+      for (const [_roomId, room] of this.blindConfig.rooms) {
+        const shadeIds = room.shadeIds.sort().join(',')
+        const blind = new BlindAccessory(room.name, shadeIds, room.id, this)
+        this.roomBlindAccessories.set(shadeIds, blind)
+        accessories.push(blind)
+      }
     }
 
     // start polling for status
@@ -94,7 +122,7 @@ class HunterDouglasPlatinumPlatform {
       return Math.min(Math.pow(retryAttempt - 1, 2) + Math.random(), maxTime)
     }
 
-    const pollingInterval = this.config.statusPollingSeconds || DEFAULT_STATUS_POLLING_SECONDS
+    const pollingInterval = this.config.statusPollingSeconds
 
     this._refreshAccessoryValues()
       .then(() => {
@@ -148,8 +176,20 @@ class HunterDouglasPlatinumPlatform {
   /** updates all accessory data with latest values after a refresh */
   _updateAccessories(status, err) {
     const fault = err ? true : false
+
+    // update any discrete blinds
     for (const [_key, accessory] of this.blindAccessories) {
       let position = this.posToHomeKit(status.shades.get(accessory.blindId))
+      accessory.faultStatus = fault
+      accessory.currentPosition = position
+      accessory.targetPosition = position
+    }
+
+    // update any virtual room blinds
+    for (const [_key, accessory] of this.roomBlindAccessories) {
+      // get first blind id
+      let blindId = accessory.blindId.split(',')[0]
+      let position = this.posToHomeKit(status.shades.get(blindId))
       accessory.faultStatus = fault
       accessory.currentPosition = position
       accessory.targetPosition = position
@@ -171,15 +211,13 @@ class HunterDouglasPlatinumPlatform {
       clearTimeout(handle)
     }
 
-    const timeoutInterval = this.config.setPositionDelayMsecs || DEFAULT_SET_POSITION_DELAY_MSECS
-
     handle = setTimeout(async () => {
       try {
         // delete ourselves from pendingSetTimer so we unblock refreshes
         this.pendingSetTimer.delete(blindId)
         const nativePosition = this.homeKitToPos(position)
         this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
-        await this.blindController.setPosition([blindId], nativePosition)
+        await this.blindController.setPosition(blindId.split(','), nativePosition)
         this.log.debug('did send ->', blindId, position)
         // trigger refresh after setting
         await this._refreshAccessoryValues()
@@ -187,7 +225,7 @@ class HunterDouglasPlatinumPlatform {
       } catch (err) {
         this.log.error('unable to set blind position', err)
       }
-    }, timeoutInterval)
+    }, this.config.setPositionDelayMsecs)
     this.pendingSetTimer.set(blindId, handle)
   }
 
