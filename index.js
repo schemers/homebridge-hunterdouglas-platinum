@@ -65,7 +65,7 @@ class HunterDouglasPlatinumPlatform {
     this.roomBlindAccessories = new Map()
 
     this.pendingRefreshPromise = null
-    this.blindController = new Bridge.Controller(config)
+    this.blindController = new Bridge.Controller(config, log)
     // map from blind id to pending timer that will ultimately set position
     this.pendingSetTimer = new Map()
   }

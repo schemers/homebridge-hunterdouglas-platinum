@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.1.2 - 2020-1-12
+
+### Fixed
+
+- pass in log to Controller constructor
+
 ## V1.1.1 - 2020-1-12
 
 ### Fixed
