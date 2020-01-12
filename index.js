@@ -29,6 +29,7 @@ module.exports = function(homebridge) {
 }
 
 const DEFAULT_STATUS_POLLING_SECONDS = 60
+const DEFAULT_SET_POSITION_DELAY_MSECS = 2500
 
 class HunterDouglasPlatinumPlatform {
   constructor(log, config) {
@@ -37,6 +38,8 @@ class HunterDouglasPlatinumPlatform {
     this.blindAccessories = new Map()
     this.pendingRefreshPromise = null
     this.blindController = new Bridge.Controller(config)
+    // map from blind id to pending timer that will ultimately set position
+    this.pendingSetTimer = new Map()
   }
 
   /** Homebridge requirement that will fetch all the discovered accessories */
@@ -126,6 +129,11 @@ class HunterDouglasPlatinumPlatform {
   /** gets status,  updates accessories, and resolves */
   async _refreshStatus() {
     try {
+      // don't refresh if there are pending set timers
+      // we'll refresh after they fire
+      if (this.pendingSetTimer.size) {
+        return null
+      }
       const blindStatus = await this.blindController.getStatus()
       this.log.debug('connected:', this.blindConfig.serialNumber, '(getStatus)')
       this._updateAccessories(blindStatus, null)
@@ -148,12 +156,39 @@ class HunterDouglasPlatinumPlatform {
     }
   }
 
-  async setTargetPosition(blindId, position) {
-    const nativePosition = this.homeKitToPos(position)
-    this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
-    await this.blindController.setPosition([blindId], nativePosition)
-    let blindAccessory = this.blindAccessories.get(blindId)
-    blindAccessory.currentPosition = position
+  /**
+   * set a new target position on the specified blind and returns immediately.
+   * internally sets a timer (clearing existing one if needed), that will set
+   * the physical blind position and refresh values upon firing.
+   *
+   * @param {*} blindId the blindId we are updating
+   * @param {*} position the new position
+   * @memberof HunterDouglasPlatinumPlatform
+   */
+  setTargetPosition(blindId, position) {
+    let handle = this.pendingSetTimer.get(blindId)
+    if (handle) {
+      clearTimeout(handle)
+    }
+
+    const timeoutInterval = this.config.setPositionDelayMsecs || DEFAULT_SET_POSITION_DELAY_MSECS
+
+    handle = setTimeout(async () => {
+      try {
+        // delete ourselves from pendingSetTimer so we unblock refreshes
+        this.pendingSetTimer.delete(blindId)
+        const nativePosition = this.homeKitToPos(position)
+        this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
+        await this.blindController.setPosition([blindId], nativePosition)
+        this.log.debug('did send ->', blindId, position)
+        // trigger refresh after setting
+        await this._refreshAccessoryValues()
+        this.log.debug('did refresh after set ->', blindId, position)
+      } catch (err) {
+        this.log.error('unable to set blind position', err)
+      }
+    }, timeoutInterval)
+    this.pendingSetTimer.set(blindId, handle)
   }
 
   /** convenience method for accessories */
@@ -202,7 +237,7 @@ class HunterDouglasPlatinumPlatform {
 
   /**
    * normalizes native blind position so it always matches the value
-   * that it returned from homeKitToPos.
+   * that is returned from homeKitToPos.
    *
    * @param {number} pos
    * @memberof HunterDouglasPlatinumPlatform

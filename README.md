@@ -31,7 +31,9 @@ Use this when you know the local static IP address.
 
 ## Optional fields:
 
-...
+- `"statusPollingSeconds"` time in seconds to poll for blind positions. Default is 60 seconds.
+
+* `"setPositionDelayMsecs"` time in msecs to delay setting blind positions. This smooths things out when you are dragging slider. Default is 2500 msecs.
 
 # Implemented HomeKit Accessory Types
 

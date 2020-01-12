@@ -1,5 +1,5 @@
 {
-  "pluginAlias": "ScreenLogic",
+  "pluginAlias": "HunterDouglasPlatinum",
   "pluginType": "platform",
   "schema": {
     "type": "object",
@@ -8,32 +8,15 @@
         "title": "IP Address",
         "type": "string",
         "placeholder": "n.n.n.n",
-        "required": false,
-        "description": "Optional. Use only if you have static IP address. If unset a UDP broadcast will be used to find the unit."
+        "required": true,
+        "description": "The IP address of the platinum gateway box."
       },
       "port": {
         "title": "IP Port",
         "type": "integer",
-        "placeholder": "80",
+        "placeholder": "522",
         "required": false,
-        "description": "Optional. Default is 80."
-      },
-      "username": {
-        "title": "Username",
-        "type": "string",
-        "placeholder": "Pentair: XX-XX-XX",
-        "required": false,
-        "description": "Optional. Set this to go through remote Pentair servers. Format should be: Pentair: XX-XX-XX"
-      },
-      "password": {
-        "title": "Password",
-        "type": "string",
-        "placeholder": "Password",
-        "options": {
-          "hidden": true
-        },
-        "required": false,
-        "description": "Optional. Only needed if going through Pentair servers."
+        "description": "Optional. Default is 522."
       },
       "statusPollingSeconds": {
         "title": "Status Polling (Seconds)",
@@ -41,7 +24,15 @@
         "required": false,
         "minimum": 1,
         "placeholder": "Get status every __ seconds",
-        "description": "Status (such as pool on, lights, temperatures, etc) is fetched on demand as needed, and is also polled for use in automatations. By default this is done every 60 seconds."
+        "description": "Status (blind position) is fetched on demand as needed, and is also polled for use in automatations. By default this is done every 60 seconds."
+      },
+      "setPositionDelayMsecs": {
+        "title": "Set Position Delay (Msecs)",
+        "type": "integer",
+        "required": false,
+        "minimum": 1,
+        "placeholder": "delay setting blind position for __ msecs",
+        "description": "How long to delay setting the blind position. This smooths things out when you are dragging slider. By default this is 2500 msecs."
       }
     }
   }
