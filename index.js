@@ -199,4 +199,15 @@ class HunterDouglasPlatinumPlatform {
   homeKitToPos(pos) {
     return Math.round((pos / 100) * 255)
   }
+
+  /**
+   * normalizes native blind position so it always matches the value
+   * that it returned from homeKitToPos.
+   *
+   * @param {number} pos
+   * @memberof HunterDouglasPlatinumPlatform
+   */
+  normalizedPos(pos) {
+    return this.homeKitToPos(this.posToHomeKit(pos))
+  }
 }
