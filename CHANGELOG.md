@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.1.4 - 2020-1-12
+
+### Fixed
+
+- have \_command use \_readUntil which pull lines from buffer first instead of returning each buffered line via async
+
 ## V1.1.3 - 2020-1-12
 
 ### Added
