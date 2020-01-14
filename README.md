@@ -1,5 +1,9 @@
 # homebridge-hunterdouglas-platinum
 
+[![NPM version](https://img.shields.io/npm/v/homebridge-hunterdouglas-platinum)](https://npmjs.org/package/homebridge-hunterdouglas-platinum)
+![License](https://img.shields.io/npm/l/homebridge-hunterdouglas-platinum)
+[![Downloads](https://img.shields.io/npm/dm/homebridge-hunterdouglas-platinum.svg)](https://npmjs.org/package/homebridge-hunterdouglas-platinum)
+
 Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
 <img src="https://i.imgur.com/g9Mwn3S.jpg" width="300">
