@@ -180,11 +180,6 @@ class HunterDouglasPlatinumPlatform {
   /** gets status,  updates accessories, and resolves */
   async _refreshStatus() {
     try {
-      // don't refresh if there are pending set timers
-      // we'll refresh after they fire
-      if (this.pendingSetTimer.size) {
-        return null
-      }
       const blindStatus = await this.blindController.getStatus()
       this.log.debug('connected:', this.blindConfig.serialNumber, '(getStatus)')
       this._updateAccessories(blindStatus, null)
@@ -239,14 +234,15 @@ class HunterDouglasPlatinumPlatform {
 
     handle = setTimeout(async () => {
       try {
-        // delete ourselves from pendingSetTimer so we unblock refreshes
+        // delete ourselves from pendingSetTimer
         this.pendingSetTimer.delete(blindId)
         const nativePosition = this.homeKitToPos(position)
         this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
         await this.blindController.setPosition(blindId.split(','), nativePosition)
         this.log.debug('did send ->', blindId, position)
-        // trigger refresh after setting
-        await this._refreshAccessoryValues()
+        // trigger refresh after setting. call _refreshStatus
+        // instead of _refreshAccessories so we definitely fetch fresh values
+        await this._refreshStatus()
         this.log.debug('did refresh after set ->', blindId, position)
       } catch (err) {
         this.log.error('unable to set blind position', err)

@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.1.5 - 2020-1-14
+
 ### Fixed
+
+- shouldn’t need to block during pending set
 
 - set `Characteristic.PositionState` to `PositionState.STOPPED`
 
