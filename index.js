@@ -206,6 +206,7 @@ class HunterDouglasPlatinumPlatform {
       accessory.faultStatus = fault
       accessory.currentPosition = position
       accessory.targetPosition = position
+      accessory.positionState = Characteristic.PositionState.STOPPED
     }
 
     // update any virtual room blinds
@@ -217,6 +218,7 @@ class HunterDouglasPlatinumPlatform {
       accessory.faultStatus = fault
       accessory.currentPosition = position
       accessory.targetPosition = position
+      accessory.positionState = Characteristic.PositionState.STOPPED
     }
   }
 
