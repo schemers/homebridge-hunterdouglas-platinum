@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+...
+
+## V1.1.6 - 2020-1-17
+
 ### Fixed
 
 - change `.once('error')` to `.on('error')`, otherwise if multiple errors are emitted the second one will crash node as an unhandled error
