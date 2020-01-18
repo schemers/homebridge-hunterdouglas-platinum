@@ -132,8 +132,10 @@ class HunterDouglasPlatinumPlatform {
       }
     }
 
-    // start polling for status
-    this._pollForStatus(0)
+    // if we found any accessories,  start polling for status
+    if (accessories.length) {
+      this._pollForStatus(0)
+    }
 
     return accessories
   }
