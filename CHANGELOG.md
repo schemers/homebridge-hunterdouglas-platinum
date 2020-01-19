@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+...
+
+## V1.1.7 - 2020-1-19
+
 ### Fixed
 
 - `_updateAccessories` `status` is null when there is an error, so add instanceof check
