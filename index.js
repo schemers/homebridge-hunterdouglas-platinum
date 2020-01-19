@@ -193,29 +193,37 @@ class HunterDouglasPlatinumPlatform {
     }
   }
 
-  /** updates all accessory data with latest values after a refresh */
+  /**
+   * updates all accessory data with latest values after a refresh.
+   */
   _updateAccessories(status, err) {
     const fault = err ? true : false
 
     // update any discrete blinds
     for (const [_key, accessory] of this.blindAccessories) {
-      let position = this.posToHomeKit(status.shades.get(accessory.blindId))
       accessory.faultStatus = fault
-      accessory.currentPosition = position
-      accessory.targetPosition = position
       accessory.positionState = Characteristic.PositionState.STOPPED
+      // status is null if there was an error, so check
+      if (status instanceof Bridge.Status) {
+        let position = this.posToHomeKit(status.shades.get(accessory.blindId))
+        accessory.currentPosition = position
+        accessory.targetPosition = position
+      }
     }
 
     // update any virtual room blinds
     for (const [_key, accessory] of this.roomBlindAccessories) {
-      // take average of all blinds
-      let blindIds = accessory.blindId.split(',')
-      let sum = blindIds.map(id => status.shades.get(id)).reduce((sum, value) => sum + value, 0)
-      let position = this.posToHomeKit(sum / blindIds.length)
       accessory.faultStatus = fault
-      accessory.currentPosition = position
-      accessory.targetPosition = position
       accessory.positionState = Characteristic.PositionState.STOPPED
+      // status is null if there was an error, so check
+      if (status instanceof Bridge.Status) {
+        // take average of all blinds
+        let blindIds = accessory.blindId.split(',')
+        let sum = blindIds.map(id => status.shades.get(id)).reduce((sum, value) => sum + value, 0)
+        let position = this.posToHomeKit(sum / blindIds.length)
+        accessory.currentPosition = position
+        accessory.targetPosition = position
+      }
     }
   }
 
