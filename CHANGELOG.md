@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.1.8 - 2020-4-9
+
+### Fixed
+
+- replace `throw new BridgeError` with `this.emit('error', ...)` when handling unexpected hello response
+
+- call `socket.end()` before emitting an error in `_handleError` (just in case)
+
+### Added
+
+- dump out read lines when debug is on
+
 ## V1.1.7 - 2020-1-19
 
 ### Fixed
