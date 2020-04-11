@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.1.9 - 2020-4-11
+
+### Fixed
+
+- call `socket.destroy()` instead of `socket.end()`
+
 ## V1.1.8 - 2020-4-9
 
 ### Fixed
