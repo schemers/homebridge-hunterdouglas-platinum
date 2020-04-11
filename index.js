@@ -1,5 +1,6 @@
 'use strict'
 
+const domain = require('domain')
 const Bridge = require('./lib/Bridge')
 
 let Accessory, Service, Characteristic, uuid
@@ -149,18 +150,24 @@ class HunterDouglasPlatinumPlatform {
 
     const pollingInterval = this.config.statusPollingSeconds
 
-    this._refreshAccessoryValues()
-      .then(() => {
-        // on success, start another timeout at normal pollingInterval
-        this.log.debug('_pollForStatus success, retryAttempt:', retryAttempt)
-        setTimeout(() => this._pollForStatus(0), pollingInterval * 1000)
-      })
-      .catch(err => {
-        // on error, start another timeout with backoff
-        const timeout = pollingInterval + backoff(retryAttempt, pollingInterval * 20)
-        this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
-        setTimeout(() => this._pollForStatus(retryAttempt + 1), timeout * 1000)
-      })
+    const d = domain.create()
+    d.on('error', err => {
+      this.log.error('domain caught error:', err)
+    })
+    d.run(() => {
+      this._refreshAccessoryValues()
+        .then(() => {
+          // on success, start another timeout at normal pollingInterval
+          this.log.debug('_pollForStatus success, retryAttempt:', retryAttempt)
+          setTimeout(() => this._pollForStatus(0), pollingInterval * 1000)
+        })
+        .catch(err => {
+          // on error, start another timeout with backoff
+          const timeout = pollingInterval + backoff(retryAttempt, pollingInterval * 20)
+          this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
+          setTimeout(() => this._pollForStatus(retryAttempt + 1), timeout * 1000)
+        })
+    })
   }
 
   // refresh all accessories

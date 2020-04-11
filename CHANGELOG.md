@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - call `socket.destroy()` instead of `socket.end()`
 
+- wrap `_pollForStatus` in a domain to see if unhandled error/exception is at the root cause of the crashing
+
 ## V1.1.8 - 2020-4-9
 
 ### Fixed
