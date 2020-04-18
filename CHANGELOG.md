@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.2.0 - 2020-4-18
+
+### Fixed
+
+- make sure to call `connection.close()` in async convenience functions
+
+- finally (hopefully) fix #1. Since we are using a shared Promise, make sure to have a `.catch` handler when also setting up the `.finally`
+
 ## V1.1.9 - 2020-4-11
 
 ### Fixed
