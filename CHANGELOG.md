@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - don't throw an error if the first line we read isn't `HunterDouglas Shade Controller`
 
+- lower socket timeout from 30s to 15s
+
 ## V1.2.0 - 2020-4-18
 
 ### Fixed
