@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - lower socket timeout from 30s to 15s
 
+- don't add pollingInterval to backoff when retrying so we retry quicker on errors
+
+- set max backoff to pollingInterval instead of pollingInterval\*20
+
 ## V1.2.0 - 2020-4-18
 
 ### Fixed

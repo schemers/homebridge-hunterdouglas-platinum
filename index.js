@@ -158,7 +158,7 @@ class HunterDouglasPlatinumPlatform {
       })
       .catch(err => {
         // on error, start another timeout with backoff
-        const timeout = pollingInterval + backoff(retryAttempt, pollingInterval * 20)
+        const timeout = backoff(retryAttempt, pollingInterval)
         this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
         setTimeout(() => this._pollForStatus(retryAttempt + 1), timeout * 1000)
       })
