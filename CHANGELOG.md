@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.2.3 - 2020-4-19
+
+### Fixed
+
+- sigh. need to read first line to make set work. log warning if it isn't what we expected
+
 ## V1.2.2 - 2020-4-19
 
 ### Fixed
