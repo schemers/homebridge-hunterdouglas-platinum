@@ -92,6 +92,7 @@ class HunterDouglasPlatinumPlatform {
 
     this.log.info(
       'connected:',
+      this.blindConfig.hello,
       this.blindConfig.serialNumber,
       this.blindConfig.softwareVersion,
       '(getBlindConfig)'

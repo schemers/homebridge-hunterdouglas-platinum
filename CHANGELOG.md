@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.2.1 - 2020-4-19
+
+### Fixed
+
+- don't throw an error if the first line we read isn't `HunterDouglas Shade Controller`
+
 ## V1.2.0 - 2020-4-18
 
 ### Fixed
