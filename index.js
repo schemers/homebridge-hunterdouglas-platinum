@@ -75,7 +75,7 @@ class HunterDouglasPlatinumPlatform {
     // map from blind id to pending timer that will ultimately set position
     this.pendingSetTimer = new Map()
 
-    this._setTargetPositionThrotteled = pThrottle(
+    this._setTargetPositionThrottled = pThrottle(
       (blindId, nativePosition) => {
         return this.blindController.setPosition(blindId.split(','), nativePosition)
       },
@@ -268,7 +268,7 @@ class HunterDouglasPlatinumPlatform {
         this.pendingSetTimer.delete(blindId)
         const nativePosition = this.homeKitToPos(position)
         this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
-        await this._setTargetPositionThrotteled(blindId, nativePosition)
+        await this._setTargetPositionThrottled(blindId, nativePosition)
         this.log.debug('did send ->', blindId, position)
         // trigger refresh after setting. call _refreshStatus
         // instead of _refreshAccessories so we definitely fetch fresh values
