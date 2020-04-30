@@ -37,7 +37,9 @@ Use this when you know the local static IP address.
 
 - `"statusPollingSeconds"` time in seconds to poll for blind positions. Default is 60 seconds.
 
-* `"setPositionDelayMsecs"` time in msecs to delay setting blind positions. This smooths things out when you are dragging slider. Default is 2500 msecs.
+* `"setPositionDelayMsecs"` time in msecs to delay actuually setting a blind position after it has changed. This smooths things out when you are dragging slider for a given slide. Default is 2500 msecs.
+
+* `"setPositionThrottleRateMsecs"` rate limits how often we send set position commands to the gateway. Default is 5000 msecs.
 
 * `"createVirtualRoomBlind"` Creates a virtual blind for each room that contains all the blinds in the room. Default is true. Changing this blind will change all blinds in the room. Position is set to the average position of all blinds in the room.
 

@@ -34,7 +34,16 @@
         "required": false,
         "minimum": 1,
         "placeholder": "delay setting blind position for __ msecs",
-        "description": "How long to delay setting the blind position. This smooths things out when you are dragging slider. By default this is 2500 msecs."
+        "description": "How long to delay setting the blind position after it changes. This smooths (debounces) things out when you are dragging slider. By default this is 2500 msecs."
+      },
+      "setPositionThrottleRateMsecs": {
+        "title": "Set Position Throttle (Msecs)",
+        "type": "integer",
+        "default": 5000,
+        "required": false,
+        "minimum": 1,
+        "placeholder": "set position throttle to __ msecs",
+        "description": "This throttles the time between sending set commands to gateway. By default this is 5000 msecs."
       },
       "createVirtualRoomBlind": {
         "title": "Create Virtual Room Blind",

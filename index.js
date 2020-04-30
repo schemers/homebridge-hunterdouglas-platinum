@@ -1,6 +1,7 @@
 'use strict'
 
 const Bridge = require('./lib/Bridge')
+const pThrottle = require('p-throttle')
 
 let Accessory, Service, Characteristic, uuid
 let BlindAccessory
@@ -30,6 +31,7 @@ module.exports = function(homebridge) {
 
 const DEFAULT_STATUS_POLLING_SECONDS = 60
 const DEFAULT_SET_POSITION_DELAY_MSECS = 2500
+const DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS = 5000
 const DEFAULT_CREATE_VIRTUAL_ROOM_BLIND = true
 const DEFAULT_CREATE_DISCRETE_BLINDS = true
 const DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME = true
@@ -47,6 +49,10 @@ class HunterDouglasPlatinumPlatform {
     this.config.setPositionDelayMsecs = configDefault(
       config.setPositionDelayMsecs,
       DEFAULT_SET_POSITION_DELAY_MSECS
+    )
+    this.config.setPositionThrottleRateMsecs = configDefault(
+      config.setPositionThrottleRateMsecs,
+      DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS
     )
     this.config.createVirtualRoomBlind = configDefault(
       config.createVirtualRoomBlind,
@@ -68,6 +74,14 @@ class HunterDouglasPlatinumPlatform {
     this.blindController = new Bridge.Controller(config, log)
     // map from blind id to pending timer that will ultimately set position
     this.pendingSetTimer = new Map()
+
+    this._setTargetPositionThrotteled = pThrottle(
+      (blindId, nativePosition) => {
+        return this.blindController.setPosition(blindId.split(','), nativePosition)
+      },
+      1,
+      this.config.setPositionThrottleRateMsecs
+    )
   }
 
   /** Homebridge requirement that will fetch all the discovered accessories */
@@ -254,7 +268,7 @@ class HunterDouglasPlatinumPlatform {
         this.pendingSetTimer.delete(blindId)
         const nativePosition = this.homeKitToPos(position)
         this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
-        await this.blindController.setPosition(blindId.split(','), nativePosition)
+        await this._setTargetPositionThrotteled(blindId, nativePosition)
         this.log.debug('did send ->', blindId, position)
         // trigger refresh after setting. call _refreshStatus
         // instead of _refreshAccessories so we definitely fetch fresh values

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.3.0 - 2020-4-29
+
+### Added
+
+- `"setPositionThrottleRateMsecs"` rate limits how often we send set position commands to the gateway. Default is 5000 msecs.
+
 ## V1.2.3 - 2020-4-19
 
 ### Fixed
