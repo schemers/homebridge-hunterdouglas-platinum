@@ -35,6 +35,7 @@ const DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS = 5000
 const DEFAULT_CREATE_VIRTUAL_ROOM_BLIND = true
 const DEFAULT_CREATE_DISCRETE_BLINDS = true
 const DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME = true
+const DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR = "topDown"
 
 class HunterDouglasPlatinumPlatform {
   constructor(log, config) {
@@ -66,6 +67,10 @@ class HunterDouglasPlatinumPlatform {
       config.prefixRoomNameToBlindName,
       DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME
     )
+    this.config.topDownBottomUpBehavior = configDefault(
+      config.topDownBottomUpBehavior,
+      DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR
+    )
 
     this.blindAccessories = new Map()
     this.roomBlindAccessories = new Map()
@@ -76,8 +81,8 @@ class HunterDouglasPlatinumPlatform {
     this.pendingSetTimer = new Map()
 
     this._setTargetPositionThrottled = pThrottle(
-      (blindId, nativePosition) => {
-        return this.blindController.setPosition(blindId.split(','), nativePosition)
+      (blindId, shadeFeatureId, nativePosition) => {
+        return this.blindController.setPosition(blindId.split(','), shadeFeatureId, nativePosition)
       },
       1,
       this.config.setPositionThrottleRateMsecs
@@ -131,7 +136,7 @@ class HunterDouglasPlatinumPlatform {
 
         const name = prefixName ? room.name + ' ' + shade.name : shade.name
 
-        const blind = new BlindAccessory(name.trim(), shade.id, shade.roomId, this)
+        const blind = new BlindAccessory(name.trim(), shade.id, shade.roomId, room.shadeTypeId, this)
         this.blindAccessories.set(shade.id, blind)
         accessories.push(blind)
       }
@@ -140,7 +145,7 @@ class HunterDouglasPlatinumPlatform {
     if (this.config.createVirtualRoomBlind) {
       for (const [_roomId, room] of this.blindConfig.rooms) {
         const shadeIds = room.shadeIds.sort().join(',')
-        const blind = new BlindAccessory(room.name, shadeIds, room.id, this)
+        const blind = new BlindAccessory(room.name, shadeIds, room.id, room.shadeTypeId, this)
         this.roomBlindAccessories.set(shadeIds, blind)
         accessories.push(blind)
       }
@@ -253,10 +258,11 @@ class HunterDouglasPlatinumPlatform {
    * the physical blind position and refresh values upon firing.
    *
    * @param {*} blindId the blindId we are updating
+   * @param {*} shadeFeatureId the shadeFeature (e.g., top-down, bottom-up) we are updating
    * @param {*} position the new position
    * @memberof HunterDouglasPlatinumPlatform
    */
-  setTargetPosition(blindId, position) {
+  setTargetPosition(blindId, shadeFeatureId, position) {
     let handle = this.pendingSetTimer.get(blindId)
     if (handle) {
       clearTimeout(handle)
@@ -267,8 +273,8 @@ class HunterDouglasPlatinumPlatform {
         // delete ourselves from pendingSetTimer
         this.pendingSetTimer.delete(blindId)
         const nativePosition = this.homeKitToPos(position)
-        this.log.debug('platform.setTargetPosition:', blindId, position, nativePosition)
-        await this._setTargetPositionThrottled(blindId, nativePosition)
+        this.log.debug('platform.setTargetPosition:', blindId, shadeFeatureId, position, nativePosition)
+        await this._setTargetPositionThrottled(blindId, shadeFeatureId, nativePosition)
         this.log.debug('did send ->', blindId, position)
         // trigger refresh after setting. call _refreshStatus
         // instead of _refreshAccessories so we definitely fetch fresh values
