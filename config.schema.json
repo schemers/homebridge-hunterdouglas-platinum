@@ -69,6 +69,15 @@
         "placeholder": "visible blind names",
         "required": false,
         "description": "Optional. Comma-seperated list of blind names (prefixed with room name) to make visible. All other blinds are ignored. Used only if 'Create Discrete Blinds' is true."
+      },"topDownBottomUpBehavior": {
+        "title": "Top-Down / Bottom-Up Behavior",
+        "type": "string",
+        "oneOf": [
+          { "title": "Top-Down", "enum": ["topDown"] },
+          { "title": "Bottom-Up", "enum": ["bottomUp"] }
+        ],
+        "required": false,
+        "description": "Optional. Choose the desired behavior for Top-Down / Bottom-Up shades.  If 'Top-Down' is specified, the slider will control the middle rail, and the shade will open downward.  If 'Bottom-Up' is specified, the slider will control the bottom rail, and the shade will open upward.  Default is 'Top-Down.'"
       }
     }
   }

@@ -49,6 +49,8 @@ Use this when you know the local static IP address.
 
 * `"visibleBlindNames"` Comma-seperated list of blind names (prefixed with room name) to make visible. All other blinds are ignored. Only used when `createDiscreteBlinds` is true.
 
+* `"topDownBottomUpBehavior"` Choose the desired behavior for Top-Down / Bottom-Up shades.  If `"topDown"` is specified, the slider will control the middle rail, and the shade will open downward.  If `"bottomUp"` is specified, the slider will control the bottom rail, and the shade will open upward.  Default is `"topDown"`.
+
 # Implemented HomeKit Accessory Types
 
 ## WindowCovering
