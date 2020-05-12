@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ...
 
+## V1.4.0 - 2020-4-29
+
+### Added
+
+- `"topDownBottomUpBehavior"` Choose the desired behavior for Top-Down / Bottom-Up blinds. If `"topDown"` is specified, the slider will control the middle rail, and the blind will open downward. If `"bottomUp"` is specified, the slider will control the bottom rail, and the blind will open upward. Default is `"topDown"`. This setting has no effect on standard blinds (i.e., blinds with only "Bottom-Up" functionality).
+
 ## V1.3.0 - 2020-4-29
 
 ### Added
