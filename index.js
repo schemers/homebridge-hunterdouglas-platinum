@@ -150,10 +150,12 @@ class HunterDouglasPlatinumPlatform {
 
     if (this.config.createVirtualRoomBlind) {
       for (const [_roomId, room] of this.blindConfig.rooms) {
-        const shadeIds = room.shadeIds.sort().join(',')
-        const blind = new BlindAccessory(room.name, shadeIds, room.id, room.shadeTypeId, this)
-        this.roomBlindAccessories.set(shadeIds, blind)
-        accessories.push(blind)
+        if (room.shadeIds.length > 0) {
+          const shadeIds = room.shadeIds.sort().join(',')
+          const blind = new BlindAccessory(room.name, shadeIds, room.id, room.shadeTypeId, this)
+          this.roomBlindAccessories.set(shadeIds, blind)
+          accessories.push(blind)
+        }
       }
     }
 
