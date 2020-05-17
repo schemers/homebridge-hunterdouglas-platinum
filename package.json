@@ -1,6 +1,6 @@
 {
   "name": "homebridge-hunterdouglas-platinum",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Plugin for Hunter Douglas Platinum Bridge",
   "main": "index.js",
   "scripts": {
