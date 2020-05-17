@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+...
+
+## V1.4.1 - 2020-5-17
+
 ### Fixed
 
 - Fixed issue #5, don't create a virtual room blind if there is only a single blind in the room.
