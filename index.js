@@ -17,7 +17,7 @@ module.exports = function(homebridge) {
     Accessory: Accessory,
     Service: Service,
     Characteristic: Characteristic,
-    uuid: uuid
+    uuid: uuid,
   }
 
   BlindAccessory = require('./lib/BlindAccessory')(exportedTypes)
@@ -25,7 +25,7 @@ module.exports = function(homebridge) {
   homebridge.registerPlatform(
     'homebridge-hunterdouglas-platinum',
     'HunterDouglasPlatinum',
-    HunterDouglasPlatinumPlatform
+    HunterDouglasPlatinumPlatform,
   )
 }
 
@@ -45,31 +45,31 @@ class HunterDouglasPlatinumPlatform {
     // apply defaults
     this.config.statusPollingSeconds = configDefault(
       config.statusPollingSeconds,
-      DEFAULT_STATUS_POLLING_SECONDS
+      DEFAULT_STATUS_POLLING_SECONDS,
     )
     this.config.setPositionDelayMsecs = configDefault(
       config.setPositionDelayMsecs,
-      DEFAULT_SET_POSITION_DELAY_MSECS
+      DEFAULT_SET_POSITION_DELAY_MSECS,
     )
     this.config.setPositionThrottleRateMsecs = configDefault(
       config.setPositionThrottleRateMsecs,
-      DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS
+      DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS,
     )
     this.config.createVirtualRoomBlind = configDefault(
       config.createVirtualRoomBlind,
-      DEFAULT_CREATE_VIRTUAL_ROOM_BLIND
+      DEFAULT_CREATE_VIRTUAL_ROOM_BLIND,
     )
     this.config.createDiscreteBlinds = configDefault(
       config.createDiscreteBlinds,
-      DEFAULT_CREATE_DISCRETE_BLINDS
+      DEFAULT_CREATE_DISCRETE_BLINDS,
     )
     this.config.prefixRoomNameToBlindName = configDefault(
       config.prefixRoomNameToBlindName,
-      DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME
+      DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME,
     )
     this.config.topDownBottomUpBehavior = configDefault(
       config.topDownBottomUpBehavior,
-      DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR
+      DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR,
     )
 
     this.blindAccessories = new Map()
@@ -85,7 +85,7 @@ class HunterDouglasPlatinumPlatform {
         return this.blindController.setPosition(blindId.split(','), shadeFeatureId, nativePosition)
       },
       1,
-      this.config.setPositionThrottleRateMsecs
+      this.config.setPositionThrottleRateMsecs,
     )
   }
 
@@ -113,7 +113,7 @@ class HunterDouglasPlatinumPlatform {
       'connected:',
       this.blindConfig.serialNumber,
       this.blindConfig.softwareVersion,
-      '(getBlindConfig)'
+      '(getBlindConfig)',
     )
 
     var accessories = []
@@ -124,7 +124,7 @@ class HunterDouglasPlatinumPlatform {
       // show only visible blinds
       const visibleNames = this.config.visibleBlindNames || ''
       const visibleBlinds = new Set(
-        visibleNames ? visibleNames.split(',').map(item => item.trim()) : []
+        visibleNames ? visibleNames.split(',').map(item => item.trim()) : [],
       )
 
       for (const [_shadeId, shade] of this.blindConfig.shades) {
@@ -141,7 +141,7 @@ class HunterDouglasPlatinumPlatform {
           shade.id,
           shade.roomId,
           room.shadeTypeId,
-          this
+          this,
         )
         this.blindAccessories.set(shade.id, blind)
         accessories.push(blind)
@@ -286,7 +286,7 @@ class HunterDouglasPlatinumPlatform {
           blindId,
           shadeFeatureId,
           position,
-          nativePosition
+          nativePosition,
         )
         await this._setTargetPositionThrottled(blindId, shadeFeatureId, nativePosition)
         this.log.debug('did send ->', blindId, position)

@@ -1,13 +1,8 @@
 {
+  "displayName": "Hunter Douglas Platinum Bridge",
   "name": "homebridge-hunterdouglas-platinum",
-  "version": "1.4.3",
+  "version": "2.0.0",
   "description": "Plugin for Hunter Douglas Platinum Bridge",
-  "main": "index.js",
-  "scripts": {
-    "lint": "eslint lib *.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "homebridge": "homebridge -D -P ."
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/schemers/homebridge-hunterdouglas-platinum.git"
@@ -22,14 +17,29 @@
     "url": "https://github.com/schemers/homebridge-hunterdouglas-platinum/issues"
   },
   "engines": {
-    "node": ">=8.3.0",
-    "homebridge": ">=0.4.0"
+    "node": ">=10.17.0",
+    "homebridge": ">0.4.53"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "lint": "eslint src/**.ts",
+    "watch": "npm run build && npm link && nodemon",
+    "build": "rimraf ./dist && tsc",
+    "prepublishOnly": "npm run lint && npm run build"
   },
   "dependencies": {
     "p-throttle": "^3.1.0"
   },
   "devDependencies": {
-    "eslint": "^6.8.0",
-    "prettier": "^1.19.1"
+    "@types/node": "^14.0.11",
+    "@typescript-eslint/eslint-plugin": "^3.1.0",
+    "@typescript-eslint/parser": "^3.1.0",
+    "eslint": "^7.2.0",
+    "homebridge": "^1.1.0",
+    "nodemon": "^2.0.4",
+    "prettier": "^1.19.1",
+    "rimraf": "^3.0.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.5"
   }
 }
