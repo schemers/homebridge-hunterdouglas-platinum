@@ -200,9 +200,10 @@ class HunterDouglasPlatinumPlatform {
       this.pendingRefreshPromise = this._refreshStatus()
       this.pendingRefreshPromise
         // this catch is needed since we have a finally,
-        // otherwise we'd get an unhandled promise rejection error.
+        // without the catch we'd get an unhandled promise rejection error
         .catch(err => {
-          this.log.error('_refreshAccessoryValues', err)
+          // log at debug level since we are logging at error in another location
+          this.log.debug('_refreshAccessoryValues', err)
         })
         .finally(() => {
           this.log.debug('clearing pendingRefreshPromise')
@@ -220,7 +221,6 @@ class HunterDouglasPlatinumPlatform {
       this._updateAccessories(blindStatus, null)
       return null
     } catch (err) {
-      this.log.error('_refreshStatus error getting blind status', err)
       this._updateAccessories(null, err)
       throw err
     }

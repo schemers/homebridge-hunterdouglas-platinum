@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-...
+### Fixed
+
+- cleanup error logging so errors aren't logged in three different places
 
 ## V1.4.2 - 2020-5-17
 
