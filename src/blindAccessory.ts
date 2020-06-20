@@ -63,6 +63,12 @@ export class BlindAccessory {
     this.service
       .getCharacteristic(this.platform.Characteristic.TargetPosition)
       .on('set', this.setTargetPosition.bind(this)) // SET - bind to the `setTargetPosition` method below
+
+    // just update state to stopped
+    this.service.updateCharacteristic(
+      this.platform.Characteristic.PositionState,
+      this.platform.Characteristic.PositionState.STOPPED,
+    )
   }
 
   /**
@@ -98,7 +104,7 @@ export class BlindAccessory {
   getCurrentPosition(callback: CharacteristicGetCallback) {
     const context = this.accessory.context as BlindAccessoryContext
 
-    const value = this.platform.getHomeKitBlindPosition(context.blindId)
+    const value = this.platform.getBlindCurrentHomeKitPosition(context.blindId)
 
     this.platform.log.debug('Get Characteristic CurrentPosition ->', value)
 
@@ -113,7 +119,7 @@ export class BlindAccessory {
     }
   }
 
-  getShadeFeatureId(context: BlindAccessoryContext) {
+  public getShadeFeatureId(context: BlindAccessoryContext) {
     // Default feature is bottom-up - Feature ID: "04"
     let shadeFeatureId = '04'
     // Special handling for top-down-bottom-up shades, which can be detected from the room's shadeTypeId
@@ -124,5 +130,17 @@ export class BlindAccessory {
       }
     }
     return shadeFeatureId
+  }
+
+  public updateCurrentPosition(position: number) {
+    this.service.updateCharacteristic(this.platform.Characteristic.CurrentPosition, position)
+  }
+
+  public updateTargetPosition(position: number) {
+    this.service.updateCharacteristic(this.platform.Characteristic.TargetPosition, position)
+  }
+
+  public updateStatusFault(fault: boolean) {
+    this.service.updateCharacteristic(this.platform.Characteristic.StatusFault, fault)
   }
 }

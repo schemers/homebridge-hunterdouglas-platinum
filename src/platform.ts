@@ -32,9 +32,6 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   // this is used to track active blind accessories
   private blindAccessories = new Map<string, BlindAccessory>()
 
-  // this is used to track active virtual room blind accessories
-  private virtualRoomAccessories = new Map<string, BlindAccessory>()
-
   private controller: Controller
 
   // fetched config
@@ -51,6 +48,8 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     string,
     (shadeIds: string, shadeFeatureId: string, position: number) => Promise<void>
   >()
+
+  private pendingRefreshPromise?: Promise<null>
 
   constructor(
     public readonly log: Logger,
@@ -185,24 +184,96 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
             roomId: roomId,
             shadeTypeId: room.shadeType,
           }
-          this.virtualRoomAccessories.set(blindId, this.configureBlindAccessory(context))
+          this.blindAccessories.set(blindId, this.configureBlindAccessory(context))
         }
       }
     }
 
+    // TODO: need to nuke orphan accessories
+
     // if we found any accessories,  start polling for status
-    if (this.virtualRoomAccessories.size || this.blindAccessories.size) {
+    if (this.blindAccessories.size) {
       this._pollForStatus(0)
     }
   }
 
   /** start polling process with truncated exponential backoff: https://cloud.google.com/storage/docs/exponential-backoff */
   _pollForStatus(retryAttempt: number) {
-    //
-    this.log.info('poll for status', retryAttempt)
+    const backoff = function(retryAttempt, maxTime) {
+      retryAttempt = Math.max(retryAttempt, 1)
+      return Math.min(Math.pow(retryAttempt - 1, 2) + Math.random(), maxTime)
+    }
+
+    const pollingInterval = this.config.statusPollingSeconds
+
+    this._refreshAccessoryValues()
+      .then(() => {
+        // on success, start another timeout at normal pollingInterval
+        this.log.debug('_pollForStatus success, retryAttempt:', retryAttempt)
+        setTimeout(() => this._pollForStatus(0), pollingInterval * 1000)
+      })
+      .catch(err => {
+        // on error, start another timeout with backoff
+        const timeout = backoff(retryAttempt, pollingInterval)
+        this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
+        setTimeout(() => this._pollForStatus(retryAttempt + 1), timeout * 1000)
+      })
   }
 
-  getHomeKitBlindPosition(blindId: string): number | undefined {
+  // refresh all accessories
+  async _refreshAccessoryValues() {
+    // if there already is a pending promise, just return it
+    if (this.pendingRefreshPromise) {
+      this.log.debug('re-using existing pendingRefreshPromise')
+    } else {
+      this.log.debug('creating new pendingRefreshPromise')
+      this.pendingRefreshPromise = this._refreshStatus()
+      this.pendingRefreshPromise
+        // this catch is needed since we have a finally,
+        // without the catch we'd get an unhandled promise rejection error
+        .catch(err => {
+          // log at debug level since we are logging at error in another location
+          this.log.debug('_refreshAccessoryValues', err)
+        })
+        .finally(() => {
+          this.log.debug('clearing pendingRefreshPromise')
+          this.pendingRefreshPromise = undefined
+        })
+    }
+    return this.pendingRefreshPromise
+  }
+
+  /** gets status,  updates accessories, and resolves */
+  async _refreshStatus() {
+    try {
+      this.blindStatus = await this.controller.getStatus()
+      this.log.debug('connected:', this.blindConfig?.deviceId, '(getStatus)')
+      this._updateAccessories(undefined)
+      return null
+    } catch (err) {
+      this.blindStatus = undefined
+      this._updateAccessories(err)
+      throw err
+    }
+  }
+
+  /**
+   * updates all accessory data with latest values after a refresh.
+   */
+  _updateAccessories(err?: Error) {
+    const fault = err ? true : false
+    // update all values
+    for (const [blindId, accessory] of this.blindAccessories) {
+      accessory.updateStatusFault(fault)
+      const position = this.getBlindCurrentHomeKitPosition(blindId)
+      if (position !== undefined) {
+        accessory.updateCurrentPosition(position)
+        accessory.updateTargetPosition(position)
+      }
+    }
+  }
+
+  getBlindCurrentHomeKitPosition(blindId: string): number | undefined {
     if (this.blindStatus === undefined) {
       this.log.warn('homeKitBlindPosition no blind status found')
       return undefined
@@ -222,22 +293,23 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   ) {
     this.log.debug('setTargetPosition ', blindId, shadeFeatureId, position)
 
+    const nativePosition = this.toNativePosition(position)
+
     let debouncedSet = this.debouncedSet.get(blindId)
     if (debouncedSet === undefined) {
       debouncedSet = pDebounce(
-        async (shadeIds: string, shadeFeatureId: string, position: number) => {
-          return this._setTargetPositionThrottled(shadeIds, shadeFeatureId, position)
+        async (shadeIds: string, shadeFeatureId: string, nativePosition: number) => {
+          return this._setTargetPositionThrottled(shadeIds, shadeFeatureId, nativePosition)
         },
         this.config.setPositionDelayMsecs,
       )
       this.debouncedSet.set(blindId, debouncedSet)
     }
-    debouncedSet(blindId, shadeFeatureId, position)
+    debouncedSet(blindId, shadeFeatureId, nativePosition)
       .then(() => {
         callback(null, position)
-
-        // if virtual room blind then we should set target position on all blinds
-        // add update current position
+        // update target/current position
+        this.updateBlindAccessoryState(blindId, position)
       })
       .catch(err => {
         this.log.error('setTargetPosition error:', err)
@@ -246,7 +318,24 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   }
 
   updateBlindAccessoryState(blindId: string, position: number | undefined) {
-    //
+    const shadeAccessory = this.blindAccessories.get(blindId)
+    if (shadeAccessory !== undefined) {
+      if (position !== undefined) {
+        shadeAccessory.updateTargetPosition(position)
+        shadeAccessory.updateCurrentPosition(position)
+      }
+      shadeAccessory.updateStatusFault(position === undefined)
+
+      // see if we are updating a virtual room blind, if so update all of them
+      if (blindId.includes(',')) {
+        const blindIds = blindId.split(',')
+        for (const id in blindIds) {
+          this.updateBlindAccessoryState(id, position)
+        }
+      }
+    } else {
+      this.log.warn('unable to updateBlindAccessoryState', blindId)
+    }
   }
 
   configureBlindAccessory(context: BlindAccessoryContext): BlindAccessory {
