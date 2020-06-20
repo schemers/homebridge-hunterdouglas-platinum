@@ -12,7 +12,7 @@ import {
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import { BlindAccessory, BlindAccessoryContext } from './blindAccessory'
 
-import { Controller, Config, Status, Room, Shade } from './controller'
+import { Controller, Config, Status } from './controller'
 
 import pThrottle = require('p-throttle')
 import pDebounce = require('p-debounce')
@@ -76,7 +76,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     this.api.on('didFinishLaunching', () => {
       log.debug('Executed didFinishLaunching callback')
       // run the method to discover / register your devices as accessories
-      this.discoverDevices()
+      this.discoverDevices(0)
     })
   }
 
@@ -106,36 +106,32 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     this.log.debug('config', this.config)
   }
 
-  /**
-   * This function is invoked when homebridge restores cached accessories from disk at startup.
-   * It should be used to setup event handlers for characteristics and update respective values.
-   */
-  configureAccessory(accessory: PlatformAccessory) {
-    this.log.info('Loading accessory from cache:', accessory.displayName)
-
-    // add the restored accessory to the accessories cache so we can track if it has already been registered
-    this.restoredAccessories.push(accessory)
-  }
-
-  async discoverDevices() {
+  discoverDevices(retryAttempt: number) {
     // test
-    this.log.info('discoverDevices called')
+    this.log.info('discoverDevices')
 
-    try {
-      this.blindConfig = await this.controller.getConfig()
-      this.log.debug('got blind config', this.blindConfig)
+    const pollingInterval = 60 // TODO: get from config
 
-      this.log.info(
-        'connected:',
-        this.blindConfig.deviceId,
-        this.blindConfig.softwareVersion,
-        '(discoverDevices)',
-      )
-      this.setupDiscoveredAccessories(this.blindConfig)
-    } catch (err) {
-      // TODO: retry
-      this.log.error('unable to get blind config', err)
-    }
+    this.controller
+      .getConfig()
+      .then(config => {
+        this.blindConfig = config
+        this.log.debug('got blind config', this.blindConfig)
+
+        this.log.info(
+          'connected:',
+          this.blindConfig.deviceId,
+          this.blindConfig.softwareVersion,
+          '(discoverDevices)',
+        )
+        this.setupDiscoveredAccessories(this.blindConfig)
+      })
+      .catch(err => {
+        // on error, start another timeout with backoff
+        const timeout = this.backoff(retryAttempt, pollingInterval)
+        this.log.error('discoverDevices retryAttempt:', retryAttempt, 'timeout:', timeout, err)
+        setTimeout(() => this.discoverDevices(retryAttempt + 1), timeout * 1000)
+      })
   }
 
   setupDiscoveredAccessories(blindConfig: Config) {
@@ -207,6 +203,17 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     }
   }
 
+  /**
+   * This function is invoked when homebridge restores cached accessories from disk at startup.
+   * It should be used to setup event handlers for characteristics and update respective values.
+   */
+  configureAccessory(accessory: PlatformAccessory) {
+    this.log.info('Loading accessory from cache:', accessory.displayName)
+
+    // add the restored accessory to the accessories cache so we can track if it has already been registered
+    this.restoredAccessories.push(accessory)
+  }
+
   configureBlindAccessory(context: BlindAccessoryContext): BlindAccessory {
     // generate a unique id for this blind based on context
     const uuid = BlindAccessory.generateUUID(this, context)
@@ -248,11 +255,6 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
 
   /** start polling process with truncated exponential backoff: https://cloud.google.com/storage/docs/exponential-backoff */
   _pollForStatus(retryAttempt: number) {
-    const backoff = function(retryAttempt, maxTime) {
-      retryAttempt = Math.max(retryAttempt, 1)
-      return Math.min(Math.pow(retryAttempt - 1, 2) + Math.random(), maxTime)
-    }
-
     const pollingInterval = this.config.statusPollingSeconds
 
     this._refreshAccessoryValues()
@@ -263,7 +265,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       })
       .catch(err => {
         // on error, start another timeout with backoff
-        const timeout = backoff(retryAttempt, pollingInterval)
+        const timeout = this.backoff(retryAttempt, pollingInterval)
         this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
         setTimeout(() => this._pollForStatus(retryAttempt + 1), timeout * 1000)
       })
@@ -401,17 +403,9 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     return Math.round((pos / 100) * 255)
   }
 
-  infoManufacturer(): string {
-    return 'HunterDouglas'
-  }
-
-  infoModel(): string {
-    if (this.blindConfig) {
-      return this.blindConfig.softwareVersion
-    } else {
-      this.log.error('blindConfig is null getting model')
-      return ''
-    }
+  backoff(retryAttempt: number, maxTime: number): number {
+    retryAttempt = Math.max(retryAttempt, 1)
+    return Math.min(Math.pow(retryAttempt - 1, 2) + Math.random(), maxTime)
   }
 
   accessoryInfo(): {
