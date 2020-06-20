@@ -47,10 +47,9 @@ export class BlindAccessory {
     // when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
     // this.accessory.getService('NAME') ?? this.accessory.addService(this.platform.Service.Lightbulb, 'NAME', 'USER_DEFINED_SUBTYPE');
 
-    const context = accessory.context as BlindAccessoryContext
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
-    this.service.setCharacteristic(this.platform.Characteristic.Name, context.displayName)
+    this.service.setCharacteristic(this.platform.Characteristic.Name, this.context.displayName)
 
     // each service must implement at-minimum the "required characteristics" for the given service type
 
@@ -71,18 +70,25 @@ export class BlindAccessory {
     )
   }
 
+  private get context(): BlindAccessoryContext {
+    return this.accessory.context
+  }
+
   /**
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
   setTargetPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    const context = this.accessory.context as BlindAccessoryContext
-
-    this.platform.log.debug('Set Characteristic TargetPosition ->', value)
+    this.platform.log.debug(
+      'Set Characteristic TargetPosition ->',
+      value,
+      this.context.blindId,
+      this.context.displayName,
+    )
 
     this.platform.setTargetPosition(
-      context.blindId,
-      this.getShadeFeatureId(context),
+      this.context.blindId,
+      this.getShadeFeatureId(this.context),
       value as number,
       callback,
     )
@@ -102,11 +108,14 @@ export class BlindAccessory {
      * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
      */
   getCurrentPosition(callback: CharacteristicGetCallback) {
-    const context = this.accessory.context as BlindAccessoryContext
+    const value = this.platform.getBlindCurrentHomeKitPosition(this.context.blindId)
 
-    const value = this.platform.getBlindCurrentHomeKitPosition(context.blindId)
-
-    this.platform.log.debug('Get Characteristic CurrentPosition ->', value)
+    this.platform.log.debug(
+      'Get Characteristic CurrentPosition ->',
+      value,
+      this.context.blindId,
+      this.context.displayName,
+    )
 
     // you must call the callback function
     // the first argument should be null if there were no errors
@@ -115,7 +124,7 @@ export class BlindAccessory {
     if (value !== undefined) {
       callback(null, value)
     } else {
-      callback(Error('unable to get CurrentPosition for ' + context.blindId), undefined)
+      callback(Error('unable to get CurrentPosition for ' + this.context.blindId), undefined)
     }
   }
 
@@ -133,14 +142,22 @@ export class BlindAccessory {
   }
 
   public updateCurrentPosition(position: number) {
+    this.platform.log.debug(
+      'updateCurrentPosition',
+      position,
+      this.context.blindId,
+      this.context.displayName,
+    )
     this.service.updateCharacteristic(this.platform.Characteristic.CurrentPosition, position)
   }
 
   public updateTargetPosition(position: number) {
+    this.platform.log.debug(
+      'updateTargetPosition',
+      position,
+      this.context.blindId,
+      this.context.displayName,
+    )
     this.service.updateCharacteristic(this.platform.Characteristic.TargetPosition, position)
-  }
-
-  public updateStatusFault(fault: boolean) {
-    this.service.updateCharacteristic(this.platform.Characteristic.StatusFault, fault)
   }
 }

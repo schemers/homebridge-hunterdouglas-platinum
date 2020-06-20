@@ -131,15 +131,15 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
         this.blindConfig.softwareVersion,
         '(discoverDevices)',
       )
-      this.setupAccessories(this.blindConfig)
+      this.setupDiscoveredAccessories(this.blindConfig)
     } catch (err) {
       // TODO: retry
       this.log.error('unable to get blind config', err)
     }
   }
 
-  setupAccessories(blindConfig: Config) {
-    // discreate blinds first
+  setupDiscoveredAccessories(blindConfig: Config) {
+    // discrete blinds first
     if (this.config.createDiscreteBlinds) {
       const prefixName = this.config.prefixRoomNameToBlindName
 
@@ -248,28 +248,18 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     try {
       this.blindStatus = await this.controller.getStatus()
       this.log.debug('connected:', this.blindConfig?.deviceId, '(getStatus)')
-      this._updateAccessories(undefined)
+      // update all values
+      for (const [blindId, accessory] of this.blindAccessories) {
+        const position = this.getBlindCurrentHomeKitPosition(blindId)
+        if (position !== undefined) {
+          accessory.updateCurrentPosition(position)
+          accessory.updateTargetPosition(position)
+        }
+      }
       return null
     } catch (err) {
       this.blindStatus = undefined
-      this._updateAccessories(err)
       throw err
-    }
-  }
-
-  /**
-   * updates all accessory data with latest values after a refresh.
-   */
-  _updateAccessories(err?: Error) {
-    const fault = err ? true : false
-    // update all values
-    for (const [blindId, accessory] of this.blindAccessories) {
-      accessory.updateStatusFault(fault)
-      const position = this.getBlindCurrentHomeKitPosition(blindId)
-      if (position !== undefined) {
-        accessory.updateCurrentPosition(position)
-        accessory.updateTargetPosition(position)
-      }
     }
   }
 
@@ -324,8 +314,6 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
         shadeAccessory.updateTargetPosition(position)
         shadeAccessory.updateCurrentPosition(position)
       }
-      shadeAccessory.updateStatusFault(position === undefined)
-
       // see if we are updating a virtual room blind, if so update all of them
       if (blindId.includes(',')) {
         const blindIds = blindId.split(',')
