@@ -189,11 +189,60 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       }
     }
 
-    // TODO: need to nuke orphan accessories
+    // nuke orphan accessories
+    const activeIds = Array.from(this.blindAccessories.values()).map(accessory => accessory.UUID)
+    const staleAccessories = this.restoredAccessories.filter(
+      accessory => !activeIds.includes(accessory.UUID),
+    )
+
+    if (staleAccessories.length > 0) {
+      const staleNames = staleAccessories.map(accessory => accessory.displayName)
+      this.log.info('unregistering accessories', staleNames)
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, staleAccessories)
+    }
 
     // if we found any accessories,  start polling for status
     if (this.blindAccessories.size) {
       this._pollForStatus(0)
+    }
+  }
+
+  configureBlindAccessory(context: BlindAccessoryContext): BlindAccessory {
+    // generate a unique id for this blind based on context
+    const uuid = BlindAccessory.generateUUID(this, context)
+
+    // see if an accessory with the same uuid has already been registered and restored from
+    // the cached devices we stored in the `configureAccessory` method above
+    const existingAccessory = this.restoredAccessories.find(accessory => accessory.UUID === uuid)
+
+    if (existingAccessory) {
+      // the accessory already exists
+      this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
+
+      // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
+      // existingAccessory.context.device = device;
+      // this.api.updatePlatformAccessories([existingAccessory]);
+
+      // create the accessory handler for the restored accessory
+      // this is imported from `platformAccessory.ts`
+      return new BlindAccessory(this, existingAccessory)
+    } else {
+      // the accessory does not yet exist, so we need to create it
+      this.log.info('Adding new accessory:', context.displayName)
+
+      // create a new accessory
+      const accessory = new this.api.platformAccessory(context.displayName, uuid)
+
+      // store a copy of the device object in the `accessory.context`
+      accessory.context = context
+
+      // create the accessory handler for the newly create accessory
+      const blindAccessory = new BlindAccessory(this, accessory)
+
+      // link the accessory to platform
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
+
+      return blindAccessory
     }
   }
 
@@ -323,45 +372,6 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       }
     } else {
       this.log.warn('unable to updateBlindAccessoryState', blindId)
-    }
-  }
-
-  configureBlindAccessory(context: BlindAccessoryContext): BlindAccessory {
-    // generate a unique id for this blind based on context
-    const uuid = BlindAccessory.generateUUID(this, context)
-
-    // see if an accessory with the same uuid has already been registered and restored from
-    // the cached devices we stored in the `configureAccessory` method above
-    const existingAccessory = this.restoredAccessories.find(accessory => accessory.UUID === uuid)
-
-    if (existingAccessory) {
-      // the accessory already exists
-      this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
-
-      // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
-      // existingAccessory.context.device = device;
-      // this.api.updatePlatformAccessories([existingAccessory]);
-
-      // create the accessory handler for the restored accessory
-      // this is imported from `platformAccessory.ts`
-      return new BlindAccessory(this, existingAccessory)
-    } else {
-      // the accessory does not yet exist, so we need to create it
-      this.log.info('Adding new accessory:', context.displayName)
-
-      // create a new accessory
-      const accessory = new this.api.platformAccessory(context.displayName, uuid)
-
-      // store a copy of the device object in the `accessory.context`
-      accessory.context = context
-
-      // create the accessory handler for the newly create accessory
-      const blindAccessory = new BlindAccessory(this, accessory)
-
-      // link the accessory to platform
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
-
-      return blindAccessory
     }
   }
 

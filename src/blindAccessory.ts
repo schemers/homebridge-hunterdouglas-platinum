@@ -70,6 +70,10 @@ export class BlindAccessory {
     )
   }
 
+  public get UUID(): string {
+    return this.accessory.UUID
+  }
+
   private get context(): BlindAccessoryContext {
     return this.accessory.context
   }
