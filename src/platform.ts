@@ -10,9 +10,9 @@ import {
 } from 'homebridge'
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
-import { BlindAccessory, BlindAccessoryContext } from './blindAccessory'
+import { ShadeAccessory, ShadeAccessoryContext } from './shadeAccessory'
 
-import { Controller, Config, Status } from './controller'
+import { Controller, ControllerConfig, ShadeStatus } from './controller'
 
 import pThrottle = require('p-throttle')
 import pDebounce = require('p-debounce')
@@ -29,21 +29,21 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   // this is used to track restored cached accessories
   private restoredAccessories: PlatformAccessory[] = []
 
-  // this is used to track active blind accessories
-  private blindAccessories = new Map<string, BlindAccessory>()
+  // this is used to track active shade accessories
+  private shadeAccessories = new Map<string, ShadeAccessory>()
 
   private controller: Controller
 
   // fetched config
-  private blindConfig?: Config
+  private controllerConfig?: ControllerConfig
 
-  // last polled blind
-  private blindStatus?: Status
+  // last polled shade status
+  private shadeStatus?: ShadeStatus
 
   // for throttling set requests
   private _setTargetPositionThrottled: pThrottle.ThrottledFunction<[string, string, number], void>
 
-  // for debouncing set attempts on the same blindId
+  // for debouncing set attempts on the same shadeId
   private debouncedSet = new Map<
     string,
     (shadeIds: string, shadeFeatureId: string, position: number) => Promise<void>
@@ -56,14 +56,14 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     public readonly config: PlatformConfig,
     public readonly api: API,
   ) {
-    this.log.debug('Finished initializing platform:', this.config.name)
+    this.log.debug('Finished initializing platform:', PLATFORM_NAME)
 
     this.applyConfigDefaults(config)
     this.controller = new Controller(this.log, this.config.ip_address, this.config.port)
 
     this._setTargetPositionThrottled = pThrottle(
-      (blindId: string, shadeFeatureId: string, nativePosition: number) => {
-        return this.controller.setPosition(blindId.split(','), shadeFeatureId, nativePosition)
+      (shadeId: string, shadeFeatureId: string, nativePosition: number) => {
+        return this.controller.setPosition(shadeId.split(','), shadeFeatureId, nativePosition)
       },
       1,
       config.setPositionThrottleRateMsecs,
@@ -115,16 +115,16 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     this.controller
       .getConfig()
       .then(config => {
-        this.blindConfig = config
-        this.log.debug('got blind config', this.blindConfig)
+        this.controllerConfig = config
+        this.log.debug('got shade config', this.controllerConfig)
 
         this.log.info(
           'connected:',
-          this.blindConfig.deviceId,
-          this.blindConfig.softwareVersion,
+          this.controllerConfig.deviceId,
+          this.controllerConfig.softwareVersion,
           '(discoverDevices)',
         )
-        this.setupDiscoveredAccessories(this.blindConfig)
+        this.setupDiscoveredAccessories(this.controllerConfig)
       })
       .catch(err => {
         // on error, start another timeout with backoff
@@ -134,59 +134,59 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       })
   }
 
-  setupDiscoveredAccessories(blindConfig: Config) {
-    // discrete blinds first
+  setupDiscoveredAccessories(controllerConfig: ControllerConfig) {
+    // discrete shades first
     if (this.config.createDiscreteBlinds) {
       const prefixName = this.config.prefixRoomNameToBlindName
 
-      // show only visible blinds
+      // show only visible shades
       const visibleNames = this.config.visibleBlindNames || ''
-      const visibleBlinds = new Set(
+      const visibleShades = new Set(
         visibleNames ? visibleNames.split(',').map(item => item.trim()) : [],
       )
 
-      for (const [blindId, shade] of blindConfig.shades) {
-        const room = blindConfig.rooms.get(shade.roomId)
+      for (const [shadeId, shade] of controllerConfig.shades) {
+        const room = controllerConfig.rooms.get(shade.roomId)
         if (room === undefined) {
           continue
         }
 
-        if (visibleNames && !visibleBlinds.has((room.name + ' ' + shade.name).trim())) {
+        if (visibleNames && !visibleShades.has((room.name + ' ' + shade.name).trim())) {
           continue
         }
 
         const name = prefixName ? room.name + ' ' + shade.name : shade.name
 
-        const context: BlindAccessoryContext = {
+        const context: ShadeAccessoryContext = {
           displayName: name,
-          blindId: blindId,
+          shadeId: shadeId,
           roomId: room.id,
           shadeTypeId: room.shadeType,
         }
 
-        this.blindAccessories.set(blindId, this.configureBlindAccessory(context))
+        this.shadeAccessories.set(shadeId, this.configureShadeAccessory(context))
       }
     }
 
-    // virtual room blinds
+    // virtual room shades
     if (this.config.createVirtualRoomBlind) {
-      for (const [roomId, room] of blindConfig.rooms) {
-        // only create virtual room blind if more than one blind in the room
+      for (const [roomId, room] of controllerConfig.rooms) {
+        // only create virtual room shades if more than one shade in the room
         if (room.shadeIds.length > 1) {
-          const blindId = room.shadeIds.sort().join(',')
-          const context: BlindAccessoryContext = {
+          const shadeId = room.shadeIds.sort().join(',')
+          const context: ShadeAccessoryContext = {
             displayName: room.name,
-            blindId: blindId,
+            shadeId: shadeId,
             roomId: roomId,
             shadeTypeId: room.shadeType,
           }
-          this.blindAccessories.set(blindId, this.configureBlindAccessory(context))
+          this.shadeAccessories.set(shadeId, this.configureShadeAccessory(context))
         }
       }
     }
 
     // nuke orphan accessories
-    const activeIds = Array.from(this.blindAccessories.values()).map(accessory => accessory.UUID)
+    const activeIds = Array.from(this.shadeAccessories.values()).map(accessory => accessory.UUID)
     const staleAccessories = this.restoredAccessories.filter(
       accessory => !activeIds.includes(accessory.UUID),
     )
@@ -198,7 +198,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     }
 
     // if we found any accessories,  start polling for status
-    if (this.blindAccessories.size) {
+    if (this.shadeAccessories.size) {
       this._pollForStatus(0)
     }
   }
@@ -214,9 +214,9 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     this.restoredAccessories.push(accessory)
   }
 
-  configureBlindAccessory(context: BlindAccessoryContext): BlindAccessory {
-    // generate a unique id for this blind based on context
-    const uuid = BlindAccessory.generateUUID(this, context)
+  configureShadeAccessory(context: ShadeAccessoryContext): ShadeAccessory {
+    // generate a unique id for this shade based on context
+    const uuid = ShadeAccessory.generateUUID(this, context)
 
     // see if an accessory with the same uuid has already been registered and restored from
     // the cached devices we stored in the `configureAccessory` method above
@@ -232,7 +232,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
 
       // create the accessory handler for the restored accessory
       // this is imported from `platformAccessory.ts`
-      return new BlindAccessory(this, existingAccessory)
+      return new ShadeAccessory(this, existingAccessory)
     } else {
       // the accessory does not yet exist, so we need to create it
       this.log.info('Adding new accessory:', context.displayName)
@@ -244,12 +244,12 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       accessory.context = context
 
       // create the accessory handler for the newly create accessory
-      const blindAccessory = new BlindAccessory(this, accessory)
+      const shadeAccessory = new ShadeAccessory(this, accessory)
 
       // link the accessory to platform
       this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory])
 
-      return blindAccessory
+      return shadeAccessory
     }
   }
 
@@ -297,11 +297,11 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   /** gets status,  updates accessories, and resolves */
   async _refreshStatus() {
     try {
-      this.blindStatus = await this.controller.getStatus()
-      this.log.debug('connected:', this.blindConfig?.deviceId, '(getStatus)')
+      this.shadeStatus = await this.controller.getStatus()
+      this.log.debug('connected:', this.controllerConfig?.deviceId, '(getStatus)')
       // update all values
-      for (const [blindId, accessory] of this.blindAccessories) {
-        const position = this.getBlindCurrentHomeKitPosition(blindId)
+      for (const [shadeId, accessory] of this.shadeAccessories) {
+        const position = this.getShadeCurrentHomeKitPosition(shadeId)
         if (position !== undefined) {
           accessory.updateCurrentPosition(position)
           accessory.updateTargetPosition(position)
@@ -309,34 +309,34 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       }
       return null
     } catch (err) {
-      this.blindStatus = undefined
+      this.shadeStatus = undefined
       throw err
     }
   }
 
-  getBlindCurrentHomeKitPosition(blindId: string): number | undefined {
-    if (this.blindStatus === undefined) {
-      this.log.warn('homeKitBlindPosition no blind status found')
+  getShadeCurrentHomeKitPosition(shadeId: string): number | undefined {
+    if (this.shadeStatus === undefined) {
+      this.log.warn('getShadeCurrentHomeKitPosition no shade status found')
       return undefined
     }
-    const blindIds = blindId.split(',')
-    const sum = blindIds
-      .map(id => this.blindStatus?.shadeState.get(id) ?? 0)
+    const shadeIds = shadeId.split(',')
+    const sum = shadeIds
+      .map(id => this.shadeStatus?.shadeState.get(id) ?? 0)
       .reduce((sum, value) => sum + value, 0)
-    return this.toHomeKitPosition(sum / blindIds.length)
+    return this.toHomeKitPosition(sum / shadeIds.length)
   }
 
   setTargetPosition(
-    blindId: string,
+    shadeId: string,
     shadeFeatureId: string,
     position: number,
     callback: CharacteristicSetCallback,
   ) {
-    this.log.debug('setTargetPosition ', blindId, shadeFeatureId, position)
+    this.log.debug('setTargetPosition ', shadeId, shadeFeatureId, position)
 
     const nativePosition = this.toNativePosition(position)
 
-    let debouncedSet = this.debouncedSet.get(blindId)
+    let debouncedSet = this.debouncedSet.get(shadeId)
     if (debouncedSet === undefined) {
       debouncedSet = pDebounce(
         async (shadeIds: string, shadeFeatureId: string, nativePosition: number) => {
@@ -344,13 +344,13 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
         },
         this.config.setPositionDelayMsecs,
       )
-      this.debouncedSet.set(blindId, debouncedSet)
+      this.debouncedSet.set(shadeId, debouncedSet)
     }
-    debouncedSet(blindId, shadeFeatureId, nativePosition)
+    debouncedSet(shadeId, shadeFeatureId, nativePosition)
       .then(() => {
         callback(null, position)
         // update target/current position
-        this.updateBlindAccessoryState(blindId, position)
+        this.updateShadeAccessoryState(shadeId, position)
       })
       .catch(err => {
         this.log.error('setTargetPosition error:', err)
@@ -358,43 +358,43 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       })
   }
 
-  updateBlindAccessoryState(blindId: string, position: number | undefined) {
-    const shadeAccessory = this.blindAccessories.get(blindId)
+  updateShadeAccessoryState(shadeId: string, position: number | undefined) {
+    const shadeAccessory = this.shadeAccessories.get(shadeId)
     if (shadeAccessory !== undefined) {
       if (position !== undefined) {
         shadeAccessory.updateTargetPosition(position)
         shadeAccessory.updateCurrentPosition(position)
       }
-      // see if we are updating a virtual room blind, if so update all of them
-      if (blindId.includes(',')) {
-        const blindIds = blindId.split(',')
-        for (const id in blindIds) {
-          this.updateBlindAccessoryState(id, position)
+      // see if we are updating a virtual room shade, if so update all of them
+      if (shadeId.includes(',')) {
+        const shadeIds = shadeId.split(',')
+        for (const id in shadeIds) {
+          this.updateShadeAccessoryState(id, position)
         }
       }
     } else {
-      this.log.warn('unable to updateBlindAccessoryState', blindId)
+      this.log.warn('unable to updateShadeAccessoryState', shadeId)
     }
   }
 
   generateUUID(accessorySalt: string) {
-    if (this.blindConfig !== undefined) {
-      return this.api.hap.uuid.generate(this.blindConfig.deviceId + ':' + accessorySalt)
+    if (this.controllerConfig !== undefined) {
+      return this.api.hap.uuid.generate(this.controllerConfig.deviceId + ':' + accessorySalt)
     } else {
-      this.log.error('blindConfig is undefined')
+      this.log.error('controllerConfig is undefined')
       return ''
     }
   }
 
   /**
-   * convert native blind position (0-255) to HomeKit (0-100)
+   * convert native shade position (0-255) to HomeKit (0-100)
    */
   toHomeKitPosition(pos: number): number {
     return Math.round((pos / 255) * 100)
   }
 
   /**
-   * convert HomeKit (0-100) to native blind position (0-255)
+   * convert HomeKit (0-100) to native shade position (0-255)
    *
    * @param {number} pos
    * @memberof HunterDouglasPlatinumPlatform
@@ -413,16 +413,16 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     model: string
     serialNumber: string
   } {
-    if (this.blindConfig) {
+    if (this.controllerConfig) {
       return {
         manufacturer: 'HunterDouglas',
         // store software version in model, since it doesn't follow
         // proper n.n.n format Apple requires and model is a string
-        model: this.blindConfig.softwareVersion,
-        serialNumber: this.blindConfig.deviceId,
+        model: this.controllerConfig.softwareVersion,
+        serialNumber: this.controllerConfig.deviceId,
       }
     } else {
-      this.log.error('blindConfig is null getting accessoryInfo')
+      this.log.error('controllerConfig is null getting accessoryInfo')
       return {
         manufacturer: 'unknown',
         model: 'unknown',

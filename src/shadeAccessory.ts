@@ -8,21 +8,19 @@ import {
 
 import { HunterDouglasPlatform } from './platform'
 
-export type BlindAccessoryContext = Record<
-  'displayName' | 'blindId' | 'roomId' | 'shadeTypeId',
+export type ShadeAccessoryContext = Record<
+  'displayName' | 'shadeId' | 'roomId' | 'shadeTypeId',
   string
 >
 
 /**
- * Blind Accessory
- * An instance of this class is created for each accessory your platform registers
- * Each accessory may expose multiple services of different service types.
+ * Shade Accessory
  */
-export class BlindAccessory {
+export class ShadeAccessory {
   private service: Service
 
-  static generateUUID(platform: HunterDouglasPlatform, context: BlindAccessoryContext): string {
-    return platform.generateUUID(context.roomId + ':' + context.blindId)
+  static generateUUID(platform: HunterDouglasPlatform, context: ShadeAccessoryContext): string {
+    return platform.generateUUID(context.roomId + ':' + context.shadeId)
   }
 
   constructor(
@@ -74,7 +72,7 @@ export class BlindAccessory {
     return this.accessory.UUID
   }
 
-  private get context(): BlindAccessoryContext {
+  private get context(): ShadeAccessoryContext {
     return this.accessory.context
   }
 
@@ -86,12 +84,12 @@ export class BlindAccessory {
     this.platform.log.debug(
       'Set Characteristic TargetPosition ->',
       value,
-      this.context.blindId,
+      this.context.shadeId,
       this.context.displayName,
     )
 
     this.platform.setTargetPosition(
-      this.context.blindId,
+      this.context.shadeId,
       this.getShadeFeatureId(this.context),
       value as number,
       callback,
@@ -112,12 +110,12 @@ export class BlindAccessory {
      * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
      */
   getCurrentPosition(callback: CharacteristicGetCallback) {
-    const value = this.platform.getBlindCurrentHomeKitPosition(this.context.blindId)
+    const value = this.platform.getShadeCurrentHomeKitPosition(this.context.shadeId)
 
     this.platform.log.debug(
       'Get Characteristic CurrentPosition ->',
       value,
-      this.context.blindId,
+      this.context.shadeId,
       this.context.displayName,
     )
 
@@ -128,11 +126,11 @@ export class BlindAccessory {
     if (value !== undefined) {
       callback(null, value)
     } else {
-      callback(Error('unable to get CurrentPosition for ' + this.context.blindId), undefined)
+      callback(Error('unable to get CurrentPosition for ' + this.context.shadeId), undefined)
     }
   }
 
-  public getShadeFeatureId(context: BlindAccessoryContext) {
+  public getShadeFeatureId(context: ShadeAccessoryContext) {
     // Default feature is bottom-up - Feature ID: "04"
     let shadeFeatureId = '04'
     // Special handling for top-down-bottom-up shades, which can be detected from the room's shadeTypeId
@@ -149,7 +147,7 @@ export class BlindAccessory {
     this.platform.log.debug(
       'updateCurrentPosition',
       position,
-      this.context.blindId,
+      this.context.shadeId,
       this.context.displayName,
     )
     this.service.updateCharacteristic(this.platform.Characteristic.CurrentPosition, position)
@@ -159,7 +157,7 @@ export class BlindAccessory {
     this.platform.log.debug(
       'updateTargetPosition',
       position,
-      this.context.blindId,
+      this.context.shadeId,
       this.context.displayName,
     )
     this.service.updateCharacteristic(this.platform.Characteristic.TargetPosition, position)

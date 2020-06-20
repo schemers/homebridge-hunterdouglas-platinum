@@ -25,7 +25,7 @@ export class Controller {
   /**
    * returns the `Config` object on success
    */
-  public async getConfig(): Promise<Config> {
+  public async getConfig(): Promise<ControllerConfig> {
     return new Promise((resolve, reject) => {
       const connection = new Connection(this.log, this.ip_address, this.port)
       connection
@@ -47,7 +47,7 @@ export class Controller {
   /***
    * returns the `Status` object on success
    */
-  public async getStatus(): Promise<Status> {
+  public async getStatus(): Promise<ShadeStatus> {
     return new Promise((resolve, reject) => {
       const connection = new Connection(this.log, this.ip_address, this.port)
       connection
@@ -170,7 +170,7 @@ class Connection extends EventEmitter {
   getConfig() {
     this._command(CMD_GET_DATA, CMD_GET_DATA_TERM)
       .then(lines => {
-        this.emit('config', new Config(lines))
+        this.emit('config', new ControllerConfig(lines))
       })
       .catch(err => this._handleError(err))
   }
@@ -179,7 +179,7 @@ class Connection extends EventEmitter {
   getStatus() {
     this._command(CMD_GET_DATA, CMD_GET_DATA_TERM)
       .then(lines => {
-        this.emit('status', new Status(lines))
+        this.emit('status', new ShadeStatus(lines))
       })
       .catch(err => this._handleError(err))
   }
@@ -359,7 +359,7 @@ export class Room {
   ) {}
 }
 
-export class Config {
+export class ControllerConfig {
   public readonly softwareVersion = '2018'
   public readonly deviceId = 'F1A2A170-A2B8-4B03-A05B-65AC70435C27' // default value
   public readonly ledBrightness: number
@@ -409,7 +409,7 @@ export class Config {
   }
 }
 
-export class Status {
+export class ShadeStatus {
   public readonly shadeState = new Map<string, number>()
   constructor(private readonly lines: string[]) {
     let match
