@@ -10,6 +10,7 @@ import {
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import { ExamplePlatformAccessory } from './platformAccessory'
+import { Controller, Config, Room, Shade } from './controller'
 
 /**
  * HomebridgePlatform
@@ -55,6 +56,17 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   discoverDevices() {
     // test
     this.log.info('discoverDevices called')
+
+    const controller = new Controller(this.log, '192.168.86.143')
+
+    controller
+      .getConfig()
+      .then(config => {
+        this.log.info('got config', config)
+      })
+      .catch(err => {
+        this.log.error('unable to get blind config:', err)
+      })
   }
 
   /**
