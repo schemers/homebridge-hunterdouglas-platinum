@@ -92,8 +92,8 @@ export class ShadeAccessory {
       this.context.shadeId,
       this.getShadeFeatureId(this.context),
       value as number,
-      callback,
     )
+    callback(null)
   }
 
   /**

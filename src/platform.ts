@@ -6,7 +6,6 @@ import {
   PlatformConfig,
   Service,
   Characteristic,
-  CharacteristicSetCallback,
 } from 'homebridge'
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
@@ -15,7 +14,6 @@ import { ShadeAccessory, ShadeAccessoryContext } from './shadeAccessory'
 import { Controller, ControllerConfig, ShadeStatus } from './controller'
 
 import pThrottle = require('p-throttle')
-import pDebounce = require('p-debounce')
 
 /**
  * HomebridgePlatform
@@ -43,13 +41,8 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   // for throttling set requests
   private _setTargetPositionThrottled: pThrottle.ThrottledFunction<[string, string, number], void>
 
-  // for debouncing set attempts on the same shadeId
-  private debouncedSet = new Map<
-    string,
-    (shadeIds: string, shadeFeatureId: string, position: number) => Promise<void>
-  >()
-
   private pendingRefreshPromise?: Promise<null>
+  private pendingSetTimer = new Map<string, NodeJS.Timeout>()
 
   constructor(
     public readonly log: Logger,
@@ -326,55 +319,37 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     return this.toHomeKitPosition(sum / shadeIds.length)
   }
 
-  setTargetPosition(
-    shadeId: string,
-    shadeFeatureId: string,
-    position: number,
-    callback: CharacteristicSetCallback,
-  ) {
+  setTargetPosition(shadeId: string, shadeFeatureId: string, position: number) {
     this.log.debug('setTargetPosition ', shadeId, shadeFeatureId, position)
 
-    const nativePosition = this.toNativePosition(position)
-
-    let debouncedSet = this.debouncedSet.get(shadeId)
-    if (debouncedSet === undefined) {
-      debouncedSet = pDebounce(
-        async (shadeIds: string, shadeFeatureId: string, nativePosition: number) => {
-          return this._setTargetPositionThrottled(shadeIds, shadeFeatureId, nativePosition)
-        },
-        this.config.setPositionDelayMsecs,
-      )
-      this.debouncedSet.set(shadeId, debouncedSet)
+    let handle = this.pendingSetTimer.get(shadeId)
+    if (handle) {
+      clearTimeout(handle)
     }
-    debouncedSet(shadeId, shadeFeatureId, nativePosition)
-      .then(() => {
-        callback(null, position)
-        // update target/current position
-        this.updateShadeAccessoryState(shadeId, position)
-      })
-      .catch(err => {
-        this.log.error('setTargetPosition error:', err)
-        callback(err)
-      })
-  }
 
-  updateShadeAccessoryState(shadeId: string, position: number | undefined) {
-    const shadeAccessory = this.shadeAccessories.get(shadeId)
-    if (shadeAccessory !== undefined) {
-      if (position !== undefined) {
-        shadeAccessory.updateTargetPosition(position)
-        shadeAccessory.updateCurrentPosition(position)
+    handle = setTimeout(async () => {
+      try {
+        // delete ourselves from pendingSetTimer
+        this.pendingSetTimer.delete(shadeId)
+        const nativePosition = this.toNativePosition(position)
+        this.log.debug(
+          'platform.setTargetPosition:',
+          shadeId,
+          shadeFeatureId,
+          position,
+          nativePosition,
+        )
+        await this._setTargetPositionThrottled(shadeId, shadeFeatureId, nativePosition)
+        this.log.debug('did send ->', shadeId, position)
+        // trigger refresh after setting. call _refreshStatus
+        // instead of _refreshAccessories so we definitely fetch fresh values
+        await this._refreshStatus()
+        this.log.debug('did refresh after set ->', shadeId, position)
+      } catch (err) {
+        this.log.error('unable to set blind position', err)
       }
-      // see if we are updating a virtual room shade, if so update all of them
-      if (shadeId.includes(',')) {
-        const shadeIds = shadeId.split(',')
-        for (const id in shadeIds) {
-          this.updateShadeAccessoryState(id, position)
-        }
-      }
-    } else {
-      this.log.warn('unable to updateShadeAccessoryState', shadeId)
-    }
+    }, this.config.setPositionDelayMsecs)
+    this.pendingSetTimer.set(shadeId, handle)
   }
 
   generateUUID(accessorySalt: string) {
