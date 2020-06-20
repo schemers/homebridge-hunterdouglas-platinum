@@ -6,13 +6,16 @@ import {
   PlatformConfig,
   Service,
   Characteristic,
+  CharacteristicSetCallback,
 } from 'homebridge'
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
-import { ExamplePlatformAccessory } from './platformAccessory'
 import { BlindAccessory, BlindAccessoryContext } from './blindAccessory'
 
-import { Controller, Config, Room, Shade } from './controller'
+import { Controller, Config, Status, Room, Shade } from './controller'
+
+import pThrottle = require('p-throttle')
+import pDebounce = require('p-debounce')
 
 /**
  * HomebridgePlatform
@@ -33,7 +36,21 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   private virtualRoomAccessories = new Map<string, BlindAccessory>()
 
   private controller: Controller
+
+  // fetched config
   private blindConfig?: Config
+
+  // last polled blind
+  private blindStatus?: Status
+
+  // for throttling set requests
+  private _setTargetPositionThrottled: pThrottle.ThrottledFunction<[string, string, number], void>
+
+  // for debouncing set attempts on the same blindId
+  private debouncedSet = new Map<
+    string,
+    (shadeIds: string, shadeFeatureId: string, position: number) => Promise<void>
+  >()
 
   constructor(
     public readonly log: Logger,
@@ -44,6 +61,14 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
 
     this.applyConfigDefaults(config)
     this.controller = new Controller(this.log, this.config.ip_address, this.config.port)
+
+    this._setTargetPositionThrottled = pThrottle(
+      (blindId: string, shadeFeatureId: string, nativePosition: number) => {
+        return this.controller.setPosition(blindId.split(','), shadeFeatureId, nativePosition)
+      },
+      1,
+      config.setPositionThrottleRateMsecs,
+    )
 
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,
@@ -151,6 +176,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     // virtual room blinds
     if (this.config.createVirtualRoomBlind) {
       for (const [roomId, room] of blindConfig.rooms) {
+        // only create virtual room blind if more than one blind in the room
         if (room.shadeIds.length > 1) {
           const blindId = room.shadeIds.sort().join(',')
           const context: BlindAccessoryContext = {
@@ -174,6 +200,53 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   _pollForStatus(retryAttempt: number) {
     //
     this.log.info('poll for status', retryAttempt)
+  }
+
+  getHomeKitBlindPosition(blindId: string): number | undefined {
+    if (this.blindStatus === undefined) {
+      this.log.warn('homeKitBlindPosition no blind status found')
+      return undefined
+    }
+    const blindIds = blindId.split(',')
+    const sum = blindIds
+      .map(id => this.blindStatus?.shadeState.get(id) ?? 0)
+      .reduce((sum, value) => sum + value, 0)
+    return this.toHomeKitPosition(sum / blindIds.length)
+  }
+
+  setTargetPosition(
+    blindId: string,
+    shadeFeatureId: string,
+    position: number,
+    callback: CharacteristicSetCallback,
+  ) {
+    this.log.debug('setTargetPosition ', blindId, shadeFeatureId, position)
+
+    let debouncedSet = this.debouncedSet.get(blindId)
+    if (debouncedSet === undefined) {
+      debouncedSet = pDebounce(
+        async (shadeIds: string, shadeFeatureId: string, position: number) => {
+          return this._setTargetPositionThrottled(shadeIds, shadeFeatureId, position)
+        },
+        this.config.setPositionDelayMsecs,
+      )
+      this.debouncedSet.set(blindId, debouncedSet)
+    }
+    debouncedSet(blindId, shadeFeatureId, position)
+      .then(() => {
+        callback(null, position)
+
+        // if virtual room blind then we should set target position on all blinds
+        // add update current position
+      })
+      .catch(err => {
+        this.log.error('setTargetPosition error:', err)
+        callback(err)
+      })
+  }
+
+  updateBlindAccessoryState(blindId: string, position: number | undefined) {
+    //
   }
 
   configureBlindAccessory(context: BlindAccessoryContext): BlindAccessory {

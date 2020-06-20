@@ -1,5 +1,4 @@
 import {
-  API,
   Service,
   PlatformAccessory,
   CharacteristicValue,
@@ -21,15 +20,6 @@ export type BlindAccessoryContext = Record<
  */
 export class BlindAccessory {
   private service: Service
-
-  /**
-   * These are just used to create a working example
-   * You should implement your own code to track the state of your accessory
-   */
-  private exampleStates = {
-    On: false,
-    Brightness: 100,
-  }
 
   static generateUUID(platform: HunterDouglasPlatform, context: BlindAccessoryContext): string {
     return platform.generateUUID(context.roomId + ':' + context.blindId)
@@ -64,49 +54,32 @@ export class BlindAccessory {
 
     // each service must implement at-minimum the "required characteristics" for the given service type
 
-    // register handlers for the On/Off Characteristic
+    // register handlers for the CurrentPosition Characteristic
     this.service
       .getCharacteristic(this.platform.Characteristic.CurrentPosition)
-      .on('set', this.setCurrentPosition.bind(this)) // SET - bind to the `setCurrentPosition` method below
       .on('get', this.getCurrentPosition.bind(this)) // GET - bind to the `getCurrentPosition` method below
 
-    // register handlers for the Brightness Characteristic
+    // register handlers for the TargetPosition Characteristic
     this.service
-      .getCharacteristic(this.platform.Characteristic.Brightness)
-      .on('set', this.setBrightness.bind(this)) // SET - bind to the 'setBrightness` method below
-
-    // EXAMPLE ONLY
-    // Example showing how to update the state of a Characteristic asynchronously instead
-    // of using the `on('get')` handlers.
-    //
-    // Here we change update the brightness to a random value every 5 seconds using
-    // the `updateCharacteristic` method.
-    setInterval(() => {
-      // assign the current brightness a random value between 0 and 100
-      const currentBrightness = Math.floor(Math.random() * 100)
-
-      // push the new value to HomeKit
-      this.service.updateCharacteristic(this.platform.Characteristic.Brightness, currentBrightness)
-
-      this.platform.log.debug(
-        'Pushed updated current Brightness state to HomeKit:',
-        currentBrightness,
-      )
-    }, 10000)
+      .getCharacteristic(this.platform.Characteristic.TargetPosition)
+      .on('set', this.setTargetPosition.bind(this)) // SET - bind to the `setTargetPosition` method below
   }
 
   /**
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
-  setCurrentPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    // implement your own code to turn your device on/off
-    this.exampleStates.On = value as boolean
+  setTargetPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+    const context = this.accessory.context as BlindAccessoryContext
 
-    this.platform.log.debug('Set Characteristic On ->', value)
+    this.platform.log.debug('Set Characteristic TargetPosition ->', value)
 
-    // you must call the callback function
-    callback(null)
+    this.platform.setTargetPosition(
+      context.blindId,
+      this.getShadeFeatureId(context),
+      value as number,
+      callback,
+    )
   }
 
   /**
@@ -123,28 +96,33 @@ export class BlindAccessory {
      * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
      */
   getCurrentPosition(callback: CharacteristicGetCallback) {
-    // implement your own code to check if the device is on
-    const isOn = this.exampleStates.On
+    const context = this.accessory.context as BlindAccessoryContext
 
-    this.platform.log.debug('Get Characteristic On ->', isOn)
+    const value = this.platform.getHomeKitBlindPosition(context.blindId)
+
+    this.platform.log.debug('Get Characteristic CurrentPosition ->', value)
 
     // you must call the callback function
     // the first argument should be null if there were no errors
     // the second argument should be the value to return
-    callback(null, isOn)
+
+    if (value !== undefined) {
+      callback(null, value)
+    } else {
+      callback(Error('unable to get CurrentPosition for ' + context.blindId), undefined)
+    }
   }
 
-  /**
-   * Handle "SET" requests from HomeKit
-   * These are sent when the user changes the state of an accessory, for example, changing the Brightness
-   */
-  setBrightness(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    // implement your own code to set the brightness
-    this.exampleStates.Brightness = value as number
-
-    this.platform.log.debug('Set Characteristic Brightness -> ', value)
-
-    // you must call the callback function
-    callback(null)
+  getShadeFeatureId(context: BlindAccessoryContext) {
+    // Default feature is bottom-up - Feature ID: "04"
+    let shadeFeatureId = '04'
+    // Special handling for top-down-bottom-up shades, which can be detected from the room's shadeTypeId
+    // For top-down-bottom-up shades (shadeTypeId 02 or 13), use the top-down feature - Feature ID: "18"
+    if (context.shadeTypeId === '02' || context.shadeTypeId === '13') {
+      if (this.platform.config.topDownBottomUpBehavior === 'topDown') {
+        shadeFeatureId = '18'
+      }
+    }
+    return shadeFeatureId
   }
 }
