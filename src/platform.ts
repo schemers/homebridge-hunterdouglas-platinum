@@ -12,6 +12,14 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
 import { ExamplePlatformAccessory } from './platformAccessory'
 import { Controller, Config, Room, Shade } from './controller'
 
+const DEFAULT_STATUS_POLLING_SECONDS = 60
+const DEFAULT_SET_POSITION_DELAY_MSECS = 2500
+const DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS = 5000
+const DEFAULT_CREATE_VIRTUAL_ROOM_BLIND = true
+const DEFAULT_CREATE_DISCRETE_BLINDS = true
+const DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME = true
+const DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR = 'topDown'
+
 /**
  * HomebridgePlatform
  * This class is the main constructor for your plugin, this is where you should
@@ -24,12 +32,34 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = []
 
+  private controller: Controller
+  private blindConfig?: Config
+
   constructor(
     public readonly log: Logger,
     public readonly config: PlatformConfig,
     public readonly api: API,
   ) {
     this.log.debug('Finished initializing platform:', this.config.name)
+
+    // apply defaults
+    this.config.statusPollingSeconds = config.statusPollingSeconds ?? DEFAULT_STATUS_POLLING_SECONDS
+    this.config.setPositionDelayMsecs =
+      config.setPositionDelayMsecs ?? DEFAULT_SET_POSITION_DELAY_MSECS
+    this.config.setPositionThrottleRateMsecs =
+      config.setPositionThrottleRateMsecs ?? DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS
+    this.config.createVirtualRoomBlind =
+      config.createVirtualRoomBlind ?? DEFAULT_CREATE_VIRTUAL_ROOM_BLIND
+    this.config.createDiscreteBlinds = config.createDiscreteBlinds ?? DEFAULT_CREATE_DISCRETE_BLINDS
+    this.config.prefixRoomNameToBlindName =
+      config.prefixRoomNameToBlindName ?? DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME
+    this.config.topDownBottomUpBehavior =
+      config.topDownBottomUpBehavior ?? DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR
+    this.config.port = config.port ?? Controller.DEFAULT_PORT
+
+    this.log.debug('config', this.config)
+
+    this.controller = new Controller(this.log, this.config.ip_address, this.config.port)
 
     // When this event is fired it means Homebridge has restored all cached accessories from disk.
     // Dynamic Platform plugins should only register new accessories after this event was fired,
@@ -53,20 +83,16 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory)
   }
 
-  discoverDevices() {
+  async discoverDevices() {
     // test
     this.log.info('discoverDevices called')
 
-    const controller = new Controller(this.log, '192.168.86.143')
-
-    controller
-      .getConfig()
-      .then(config => {
-        this.log.info('got config', config)
-      })
-      .catch(err => {
-        this.log.error('unable to get blind config:', err)
-      })
+    try {
+      this.blindConfig = await this.controller.getConfig()
+      this.log.debug('got blind config', this.blindConfig)
+    } catch (err) {
+      this.log.error('unable to get blind config', err)
+    }
   }
 
   /**
@@ -134,6 +160,15 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
 
       // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
       // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    }
+  }
+
+  generateUUID(accessorySalt: string) {
+    if (this.blindConfig !== undefined) {
+      return this.api.hap.uuid.generate(this.blindConfig.deviceId + ':' + accessorySalt)
+    } else {
+      this.log.error('blindConfig is undefined')
+      return ''
     }
   }
 }

@@ -361,7 +361,7 @@ export class Room {
 
 export class Config {
   public readonly softwareVersion = '2018'
-  public readonly serialNumber = 'F1A2A170-A2B8-4B03-A05B-65AC70435C27' // default value
+  public readonly deviceId = 'F1A2A170-A2B8-4B03-A05B-65AC70435C27' // default value
   public readonly ledBrightness: number
   public readonly homeName: string
   public readonly rooms = new Map<string, Room>()
@@ -376,7 +376,7 @@ export class Config {
       if ((match = FIRM_RE.exec(line))) {
         this.softwareVersion = match[1]
       } else if ((match = MAC_RE.exec(line))) {
-        this.serialNumber = match[1]
+        this.deviceId = match[1]
       } else if ((match = LED_RE.exec(line))) {
         this.ledBrightness = Number(match[1])
       } else if ((match = HOME_RE.exec(line))) {
