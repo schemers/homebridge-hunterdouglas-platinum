@@ -9,18 +9,10 @@ import {
 
 import { HunterDouglasPlatform } from './platform'
 
-export class BlindAccessoryContext {
-  constructor(
-    private readonly name: string,
-    private readonly blindId: string,
-    private readonly roomId: string,
-    private readonly shadeTypeId: string,
-  ) {}
-
-  generateUUID(platform: HunterDouglasPlatform): string {
-    return platform.generateUUID(this.roomId + ':' + this.blindId)
-  }
-}
+export type BlindAccessoryContext = Record<
+  'displayName' | 'blindId' | 'roomId' | 'shadeTypeId',
+  string
+>
 
 /**
  * Blind Accessory
@@ -39,16 +31,21 @@ export class BlindAccessory {
     Brightness: 100,
   }
 
+  static generateUUID(platform: HunterDouglasPlatform, context: BlindAccessoryContext): string {
+    return platform.generateUUID(context.roomId + ':' + context.blindId)
+  }
+
   constructor(
     private readonly platform: HunterDouglasPlatform,
     private readonly accessory: PlatformAccessory,
   ) {
     // set accessory information
+    const accessoryInfo = platform.accessoryInfo()
     this.accessory
       .getService(this.platform.Service.AccessoryInformation)!
-      .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Default-Manufacturer')
-      .setCharacteristic(this.platform.Characteristic.Model, 'Default-Model')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, 'Default-Serial')
+      .setCharacteristic(this.platform.Characteristic.Manufacturer, accessoryInfo.manufacturer)
+      .setCharacteristic(this.platform.Characteristic.Model, accessoryInfo.model)
+      .setCharacteristic(this.platform.Characteristic.SerialNumber, accessoryInfo.serialNumber)
 
     // get the WindowCovering service if it exists, otherwise create a new WindowCovering service
     // you can create multiple services for each accessory
@@ -60,21 +57,18 @@ export class BlindAccessory {
     // when creating multiple services of the same type, you need to use the following syntax to specify a name and subtype id:
     // this.accessory.getService('NAME') ?? this.accessory.addService(this.platform.Service.Lightbulb, 'NAME', 'USER_DEFINED_SUBTYPE');
 
+    const context = accessory.context as BlindAccessoryContext
     // set the service name, this is what is displayed as the default name on the Home app
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
-    this.service.setCharacteristic(
-      this.platform.Characteristic.Name,
-      accessory.context.device.exampleDisplayName,
-    )
+    this.service.setCharacteristic(this.platform.Characteristic.Name, context.displayName)
 
     // each service must implement at-minimum the "required characteristics" for the given service type
-    // see https://developers.homebridge.io/#/service/Lightbulb
 
     // register handlers for the On/Off Characteristic
     this.service
-      .getCharacteristic(this.platform.Characteristic.On)
-      .on('set', this.setOn.bind(this)) // SET - bind to the `setOn` method below
-      .on('get', this.getOn.bind(this)) // GET - bind to the `getOn` method below
+      .getCharacteristic(this.platform.Characteristic.CurrentPosition)
+      .on('set', this.setCurrentPosition.bind(this)) // SET - bind to the `setCurrentPosition` method below
+      .on('get', this.getCurrentPosition.bind(this)) // GET - bind to the `getCurrentPosition` method below
 
     // register handlers for the Brightness Characteristic
     this.service
@@ -105,7 +99,7 @@ export class BlindAccessory {
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
-  setOn(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+  setCurrentPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     // implement your own code to turn your device on/off
     this.exampleStates.On = value as boolean
 
@@ -128,7 +122,7 @@ export class BlindAccessory {
      * @example
      * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
      */
-  getOn(callback: CharacteristicGetCallback) {
+  getCurrentPosition(callback: CharacteristicGetCallback) {
     // implement your own code to check if the device is on
     const isOn = this.exampleStates.On
 
