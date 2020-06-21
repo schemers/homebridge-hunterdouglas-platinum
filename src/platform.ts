@@ -13,7 +13,7 @@ import { ShadeAccessory, ShadeAccessoryContext } from './shadeAccessory'
 
 import { Controller, ControllerConfig, ShadeStatus } from './controller'
 
-import pThrottle = require('p-throttle')
+import pThrottle from 'p-throttle'
 
 /**
  * HomebridgePlatform
