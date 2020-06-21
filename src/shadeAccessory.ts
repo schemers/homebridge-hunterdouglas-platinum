@@ -23,6 +23,15 @@ export class ShadeAccessory {
     return platform.generateUUID(context.roomId + ':' + context.shadeId)
   }
 
+  public static sameContext(a: ShadeAccessoryContext, b: ShadeAccessoryContext): boolean {
+    return (
+      a.displayName === b.displayName &&
+      a.shadeId === b.shadeId &&
+      a.roomId === b.roomId &&
+      a.shadeFeatureId === b.shadeFeatureId
+    )
+  }
+
   constructor(
     private readonly platform: HunterDouglasPlatform,
     private readonly accessory: PlatformAccessory,

@@ -219,10 +219,12 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       // the accessory already exists
       this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
 
-      // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
-      // existingAccessory.context.device = device;
-      // this.api.updatePlatformAccessories([existingAccessory]);
-
+      // update the context if it has changed
+      if (!ShadeAccessory.sameContext(context, existingAccessory.context)) {
+        existingAccessory.context = context
+        this.log.info('Updating existing accessory:', context.displayName)
+        this.api.updatePlatformAccessories([existingAccessory])
+      }
       // create the accessory handler for the restored accessory
       // this is imported from `platformAccessory.ts`
       return new ShadeAccessory(this, existingAccessory)
