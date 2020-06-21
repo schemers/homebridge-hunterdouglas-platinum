@@ -1,30 +1,33 @@
-'use strict'
+import { Logger } from 'homebridge'
 
-const net = require('net')
-const EventEmitter = require('events')
+import { Socket } from 'net'
+import { EventEmitter } from 'events'
 
-const DEFAULT_PORT = 522
+interface ControllerOptions {
+  log: Logger
+  ip_address: string
+  port?: number
+}
 
-/**
- * config options:
- * 1. find unit by static IP address.
- *   config = {
- *     ip_address: "n.n.n.n",
- *     port: 522 // optional port
- *   }
- */
-class Controller {
-  constructor(config, log) {
-    this.config = config
-    this.log = log || console
+export class Controller {
+  static DEFAULT_PORT = 522
+
+  private readonly log: Logger
+  private readonly ip_address: string
+  private readonly port: number = Controller.DEFAULT_PORT
+
+  constructor(settings: ControllerOptions) {
+    this.log = settings.log
+    this.ip_address = settings.ip_address
+    this.port = settings.port ?? Controller.DEFAULT_PORT
   }
 
   /**
    * returns the `Config` object on success
    */
-  async getConfig() {
+  public async getConfig(): Promise<ControllerConfig> {
     return new Promise((resolve, reject) => {
-      const connection = new Connection(this.config.port, this.config.ip_address, this.log)
+      const connection = new Connection(this.log, this.ip_address, this.port)
       connection
         .on('error', err => {
           connection.close()
@@ -44,9 +47,9 @@ class Controller {
   /***
    * returns the `Status` object on success
    */
-  async getStatus() {
+  public async getStatus(): Promise<ShadeStatus> {
     return new Promise((resolve, reject) => {
-      const connection = new Connection(this.config.port, this.config.ip_address, this.log)
+      const connection = new Connection(this.log, this.ip_address, this.port)
       connection
         .on('error', err => {
           connection.close()
@@ -67,9 +70,13 @@ class Controller {
    * set the specified shades (which should be an array of shadeIds) to the position (0-255).
    * returns `()` on success
    */
-  async setPosition(shadeIds, shadeFeatureId, position) {
+  public async setPosition(
+    shadeIds: string[],
+    shadeFeatureId: string,
+    position: number,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      const connection = new Connection(this.config.port, this.config.ip_address, this.log)
+      const connection = new Connection(this.log, this.ip_address, this.port)
       connection
         .on('error', err => {
           connection.close()
@@ -92,12 +99,12 @@ const EXPECTED_HELLO = 'HunterDouglas Shade Controller'
 const CMD_GET_DATA = '$dat'
 const CMD_GET_DATA_TERM = /^\$upd01-$/
 
-function CMD_POS_SET(shadeId, shadeFeatureId, position) {
+function CMD_POS_SET(shadeId: string, shadeFeatureId: string, position: number) {
   return (
     '$pss' +
-    String(shadeId).padStart(2, '0') +
+    shadeId.padStart(2, '0') +
     '-' +
-    String(shadeFeatureId).padStart(2, '0') +
+    shadeFeatureId.padStart(2, '0') +
     '-' +
     String(position).padStart(3, '0')
   )
@@ -121,16 +128,23 @@ const HD_PROTOCOL_LINE_TERM = '\n\r'
  * `connected` emitted when we successfully connect and get expected hello from bridge.
  */
 class Connection extends EventEmitter {
-  constructor(port, ip_address, log) {
+  private socket: Socket
+  private data = ''
+  private dataFromIndex = 0
+  private readLineResolver?: (value?: string | PromiseLike<string>) => void
+
+  constructor(
+    private readonly log: Logger,
+    private readonly ip_address: string,
+    private readonly port: number = Controller.DEFAULT_PORT,
+  ) {
     super()
-    this.port = port || DEFAULT_PORT
-    this.ip_address = ip_address
-    this.log = log
+
     this.data = ''
     this.dataFromIndex = 0
-    this.readLineResolver = null
+    this.readLineResolver = undefined
 
-    this.socket = new net.Socket()
+    this.socket = new Socket()
     this.socket
       .setEncoding('utf8')
       .setTimeout(30000)
@@ -145,7 +159,7 @@ class Connection extends EventEmitter {
    * starts things in motion to eventually emit a `connected` event on success.
    */
   connect() {
-    this.socket.connect(this.port || DEFAULT_PORT, this.ip_address)
+    this.socket.connect(this.port, this.ip_address)
   }
 
   close() {
@@ -156,7 +170,7 @@ class Connection extends EventEmitter {
   getConfig() {
     this._command(CMD_GET_DATA, CMD_GET_DATA_TERM)
       .then(lines => {
-        this.emit('config', new Config(lines))
+        this.emit('config', new ControllerConfig(lines))
       })
       .catch(err => this._handleError(err))
   }
@@ -165,7 +179,7 @@ class Connection extends EventEmitter {
   getStatus() {
     this._command(CMD_GET_DATA, CMD_GET_DATA_TERM)
       .then(lines => {
-        this.emit('status', new Status(lines))
+        this.emit('status', new ShadeStatus(lines))
       })
       .catch(err => this._handleError(err))
   }
@@ -186,8 +200,8 @@ class Connection extends EventEmitter {
    * @param {number} position
    * @memberof Connection
    */
-  async _setPosition(shadeIds, shadeFeatureId, position) {
-    for (var shadeId of shadeIds) {
+  async _setPosition(shadeIds: string[], shadeFeatureId: string, position: number) {
+    for (const shadeId of shadeIds) {
       this.log.debug(`Connection._setPosition: ${shadeId} to ${position}`)
       await this._command(CMD_POS_SET(shadeId, shadeFeatureId, position), CMD_POS_SET_TERM)
     }
@@ -203,7 +217,7 @@ class Connection extends EventEmitter {
    * @returns [string]
    * @memberof Connection
    */
-  async _command(cmd, terminator) {
+  async _command(cmd: string, terminator: RegExp): Promise<string[]> {
     this.socket.write(cmd)
     this.log.debug('_command: WRITE:', cmd)
 
@@ -213,12 +227,12 @@ class Connection extends EventEmitter {
   /** keeps reading lines until a line ending with token is found.
    * returns array of lines found, not included line with token.
    */
-  async _readUntil(terminator) {
-    var lines = []
-    var line = ''
+  async _readUntil(terminator): Promise<string[]> {
+    const lines = Array<string>()
+    let line: string | undefined = ''
 
     // try to read what we already have buffered first
-    while ((line = this._popLineFromData()) != null) {
+    while ((line = this._popLineFromData()) !== undefined) {
       if (terminator.test(line)) {
         return lines
       }
@@ -226,19 +240,23 @@ class Connection extends EventEmitter {
     }
 
     // if we've exhausted what is buffered, wait for new data
-    while ((line = await this._readLine()) != null) {
+    while ((line = await this._readLine()) !== undefined) {
       if (terminator.test(line)) {
         return lines
       }
       lines.push(line)
     }
+
+    // hum, this should never be called but is required
+    return lines
   }
 
-  async _readLine() {
-    return new Promise((resolve, _reject) => {
+  async _readLine(): Promise<string> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    return new Promise<string>((resolve, _reject) => {
       // lets see if a line is already available, and just return it
       const line = this._popLineFromData()
-      if (line != null) {
+      if (line !== undefined) {
         this.log.debug('_command: READ:', line)
         resolve(line)
       } else {
@@ -250,7 +268,6 @@ class Connection extends EventEmitter {
   }
 
   _handleReady() {
-    this.log.debug('_handleReady')
     this._readLine().then(line => {
       if (!line.endsWith(EXPECTED_HELLO)) {
         this.log.warn('_handleReady unexpected hello', line)
@@ -259,30 +276,28 @@ class Connection extends EventEmitter {
     })
   }
 
-  _handleClose(_hadError) {
-    this.socketClosed = true
-  }
+  // eslint-disable-next-line @typescript-eslint/no-empty-function,@typescript-eslint/no-unused-vars
+  _handleClose(_hadError: boolean) {}
 
   _handleTimeout() {
     this.socket.destroy()
     this.emit('error', new BridgeError('timeout'))
   }
 
-  _handleError(err) {
-    this.log.error('_handleError:', err)
+  _handleError(err: Error) {
     this.socket.destroy()
     this.emit('error', err)
   }
 
-  _handleData(data) {
+  _handleData(data: Buffer) {
     this.data += data
     //this.log.debug('handleData:', util.inspect(data))
     if (this.readLineResolver) {
       const line = this._popLineFromData()
-      if (line != null) {
+      if (line !== undefined) {
         this.log.debug('_command: READ:', line)
         this.readLineResolver(line)
-        this.readLineResolver = null
+        this.readLineResolver = undefined
       }
     } else {
       this.log.debug('handleData: no resolver')
@@ -290,10 +305,10 @@ class Connection extends EventEmitter {
   }
 
   /** attempts to read a line from data and either returns trimmed line or null if no data available */
-  _popLineFromData() {
+  _popLineFromData(): string | undefined {
     const endIndex = this.data.indexOf(HD_PROTOCOL_LINE_TERM, this.dataFromIndex)
-    if (endIndex == -1) {
-      return null
+    if (endIndex === -1) {
+      return undefined
     } else {
       const result = this.data.slice(this.dataFromIndex, endIndex)
       const newFromIndex = endIndex + HD_PROTOCOL_LINE_TERM.length
@@ -309,69 +324,99 @@ class Connection extends EventEmitter {
   }
 }
 
-class BridgeError extends Error {}
-
 const FIRM_RE = /^\$firm\d+-(.*)$/
 const MAC_RE = /^\$MAC0x(.*)-$/
+const HOME_RE = /^\$ct(.*)$/
 const LED_RE = /^\$LEDl(\d\d\d)-$/
 const ROOM_RE = /^\$cr(\d\d)-(\d\d)-[^-]+-(.*)$/
 const SHADE_RE = /^\$cs(\d\d)-(\d\d)-[^-]+-(.*)$/
 const SHADE_POS_RE = /^\$cp(\d\d)-\d\d-(\d\d\d)-$/
 
-class Config {
-  constructor(lines) {
-    var match
-    this.softwareVersion = '2018'
-    this.serialNumber = 'F1A2A170-A2B8-4B03-A05B-65AC70435C27' // default value
-    this.rooms = new Map()
-    this.shades = new Map()
+export class Shade {
+  _state = 0
+
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+    public readonly roomId: string,
+  ) {}
+
+  public get state(): number {
+    return this._state
+  }
+}
+
+export class Room {
+  constructor(
+    public readonly id: string,
+    public readonly shadeType: string,
+    public readonly name: string,
+    public readonly shadeIds: Array<string>,
+  ) {}
+}
+
+export class ControllerConfig {
+  public readonly softwareVersion = '2018'
+  public readonly deviceId = 'F1A2A170-A2B8-4B03-A05B-65AC70435C27' // default value
+  public readonly ledBrightness: number
+  public readonly homeName: string
+  public readonly rooms = new Map<string, Room>()
+  public readonly shades = new Map<string, Shade>()
+
+  constructor(lines: string[]) {
+    let match
+    this.ledBrightness = 0
+    this.homeName = ''
 
     for (const line of lines) {
       if ((match = FIRM_RE.exec(line))) {
         this.softwareVersion = match[1]
       } else if ((match = MAC_RE.exec(line))) {
-        this.serialNumber = match[1]
+        this.deviceId = match[1]
       } else if ((match = LED_RE.exec(line))) {
         this.ledBrightness = Number(match[1])
-      } else if ((match = LED_RE.exec(line))) {
-        this.homeName = match[1]
+      } else if ((match = HOME_RE.exec(line))) {
+        this.homeName = match[1].trim()
       } else if ((match = ROOM_RE.exec(line))) {
         const id = String(match[1]).padStart(2, '0')
         const shadeTypeId = String(match[2]).padStart(2, '0')
-        const name = match[3]
-        this.rooms.set(id, { id: id, shadeTypeId: shadeTypeId, name: name, shadeIds: [] })
+        const name = match[3].trim()
+        const room = new Room(id, shadeTypeId, name, Array<string>())
+        this.rooms.set(id, room)
       } else if ((match = SHADE_RE.exec(line))) {
         const id = String(match[1]).padStart(2, '0')
         const roomId = String(match[2]).padStart(2, '0')
-        const name = match[3]
-        this.shades.set(id, { id: id, roomId: roomId, name: name })
-        this.rooms.get(roomId).shadeIds.push(id)
+        const name = match[3].trim()
+        const shade = new Shade(id, name, roomId)
+        this.shades.set(id, shade)
+        const room = this.rooms.get(roomId)
+        if (room) {
+          room.shadeIds.push(id)
+        }
       } else if ((match = SHADE_POS_RE.exec(line))) {
         const id = String(match[1]).padStart(2, '0')
         const state = match[2]
-        this.shades.get(id).state = Number(state)
+        const shade = this.shades.get(id)
+        if (shade) {
+          shade._state = Number(state)
+        }
       }
     }
   }
 }
 
-class Status {
-  constructor(lines) {
-    this.shades = new Map()
-    var match
+export class ShadeStatus {
+  public readonly shadeState = new Map<string, number>()
+  constructor(private readonly lines: string[]) {
+    let match
     for (const line of lines) {
       if ((match = SHADE_POS_RE.exec(line))) {
         const id = match[1]
         const state = match[2]
-        this.shades.set(id, Number(state))
+        this.shadeState.set(id, Number(state))
       }
     }
   }
 }
 
-module.exports = {
-  Controller,
-  Config,
-  Status,
-  BridgeError
-}
+export class BridgeError extends Error {}

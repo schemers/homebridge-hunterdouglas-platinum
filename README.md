@@ -8,13 +8,20 @@
 
 <img src="https://i.imgur.com/g9Mwn3S.jpg" width="300">
 
+## Requirements
+
+This plugin was recently rewritten in Typescript to use the latest capabilities of Homebridge 1.x, so it requires at a minimum:
+
+1. Homebridge >= 1.1.1
+2. Node >= 10.17.0
+
 ## Installation
 
 <!-- 2. Clone (or pull) this repository from github into the same path Homebridge lives (usually `/usr/local/lib/node_modules`). Note: the code currently on GitHub is in beta, and is newer than the latest published version of this package on `npm` -->
 
 1. Install homebridge using: `npm install -g homebridge`
-2. Install this plug-in using: `npm install -g homebridge-hunterdouglas-platinum`
-3. Update your configuration file. See example `config.json` snippet below.
+1. Install this plug-in using: `npm install -g homebridge-hunterdouglas-platinum`
+1. Update your configuration file. See example `config.json` snippet below.
 
 ## Configuration
 

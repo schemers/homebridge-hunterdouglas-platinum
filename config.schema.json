@@ -1,6 +1,7 @@
 {
   "pluginAlias": "HunterDouglasPlatinum",
   "pluginType": "platform",
+  "singular": true,
   "schema": {
     "type": "object",
     "properties": {
@@ -69,7 +70,8 @@
         "placeholder": "visible blind names",
         "required": false,
         "description": "Optional. Comma-seperated list of blind names (prefixed with room name) to make visible. All other blinds are ignored. Used only if 'Create Discrete Blinds' is true."
-      },"topDownBottomUpBehavior": {
+      },
+      "topDownBottomUpBehavior": {
         "title": "Top-Down / Bottom-Up Behavior",
         "type": "string",
         "default": "topDown",
