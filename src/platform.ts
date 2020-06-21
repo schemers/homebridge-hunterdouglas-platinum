@@ -52,13 +52,18 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     this.log.debug('Finished initializing platform', PLATFORM_NAME)
 
     this.applyConfigDefaults(config)
-    this.controller = new Controller(this.log, this.config.ip_address, this.config.port)
+
+    this.controller = new Controller({
+      log: this.log,
+      ip_address: this.config.ip_address,
+      port: this.config.port,
+    })
 
     this._setTargetPositionThrottled = pThrottle(
       (shadeId: string, shadeFeatureId: string, nativePosition: number) => {
         return this.controller.setPosition(shadeId.split(','), shadeFeatureId, nativePosition)
       },
-      1,
+      1, // LIMIT to 1 call within interval
       config.setPositionThrottleRateMsecs,
     )
 

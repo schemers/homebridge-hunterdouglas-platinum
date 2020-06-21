@@ -3,22 +3,24 @@ import { Logger } from 'homebridge'
 import { Socket } from 'net'
 import { EventEmitter } from 'events'
 
-/**
- * config options:
- * 1. find unit by static IP address.
- *   config = {
- *     ip_address: "n.n.n.n",
- *     port: 522 // optional port
- *   }
- */
+interface ControllerOptions {
+  log: Logger
+  ip_address: string
+  port?: number
+}
+
 export class Controller {
   static DEFAULT_PORT = 522
 
-  constructor(
-    private readonly log: Logger,
-    private readonly ip_address: string,
-    private readonly port: number = Controller.DEFAULT_PORT,
-  ) {}
+  private log: Logger
+  private ip_address: string
+  private port: number = Controller.DEFAULT_PORT
+
+  constructor(settings: ControllerOptions) {
+    this.log = settings.log
+    this.ip_address = settings.ip_address
+    this.port = settings.port ?? Controller.DEFAULT_PORT
+  }
 
   /**
    * returns the `Config` object on success
