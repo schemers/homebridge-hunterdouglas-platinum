@@ -30,6 +30,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   // this is used to track active shade accessories
   private shadeAccessories = new Map<string, ShadeAccessory>()
 
+  // bridge controller to talk to shades
   private controller: Controller
 
   // fetched config
@@ -41,7 +42,10 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   // for throttling set requests
   private _setTargetPositionThrottled: pThrottle.ThrottledFunction<[string, string, number], void>
 
+  // set if we have an outstanding refresh
   private pendingRefreshPromise?: Promise<null>
+
+  // used to debounce multiple sets to the same shadeId
   private pendingSetTimer = new Map<string, NodeJS.Timeout>()
 
   constructor(
@@ -51,6 +55,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   ) {
     this.log.debug('Finished initializing platform', PLATFORM_NAME)
 
+    // do this first to make sure we have proper defaults moving forward
     this.applyConfigDefaults(config)
 
     this.controller = new Controller({
@@ -76,32 +81,6 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       // run the method to discover / register your devices as accessories
       this.discoverDevices(0)
     })
-  }
-
-  applyConfigDefaults(config: PlatformConfig) {
-    const DEFAULT_STATUS_POLLING_SECONDS = 60
-    const DEFAULT_SET_POSITION_DELAY_MSECS = 2500
-    const DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS = 5000
-    const DEFAULT_CREATE_VIRTUAL_ROOM_BLIND = true
-    const DEFAULT_CREATE_DISCRETE_BLINDS = true
-    const DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME = true
-    const DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR = 'topDown'
-
-    // apply defaults
-    config.statusPollingSeconds = config.statusPollingSeconds ?? DEFAULT_STATUS_POLLING_SECONDS
-    config.setPositionDelayMsecs = config.setPositionDelayMsecs ?? DEFAULT_SET_POSITION_DELAY_MSECS
-    config.setPositionThrottleRateMsecs =
-      config.setPositionThrottleRateMsecs ?? DEFAULT_SET_POSITION_THROTTLE_RATE_MSECS
-    config.createVirtualRoomBlind =
-      config.createVirtualRoomBlind ?? DEFAULT_CREATE_VIRTUAL_ROOM_BLIND
-    config.createDiscreteBlinds = config.createDiscreteBlinds ?? DEFAULT_CREATE_DISCRETE_BLINDS
-    config.prefixRoomNameToBlindName =
-      config.prefixRoomNameToBlindName ?? DEFAULT_PREFIX_ROOM_NAME_TO_BLIND_NAME
-    config.topDownBottomUpBehavior =
-      config.topDownBottomUpBehavior ?? DEFAULT_TOP_DOWN_BOTTOM_UP_BEHAVIOR
-    config.port = config.port ?? Controller.DEFAULT_PORT
-
-    this.log.debug('config', this.config)
   }
 
   discoverDevices(retryAttempt: number) {
@@ -182,7 +161,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       }
     }
 
-    // nuke orphan accessories
+    // unregister orphaned accessories
     const activeIds = Array.from(this.shadeAccessories.values()).map(accessory => accessory.UUID)
     const staleAccessories = this.restoredAccessories.filter(
       accessory => !activeIds.includes(accessory.UUID),
@@ -419,5 +398,18 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
         serialNumber: '',
       }
     }
+  }
+
+  applyConfigDefaults(config: PlatformConfig) {
+    // apply defaults
+    config.statusPollingSeconds = config.statusPollingSeconds ?? 60
+    config.setPositionDelayMsecs = config.setPositionDelayMsecs ?? 2500
+    config.setPositionThrottleRateMsecs = config.setPositionThrottleRateMsecs ?? 5000
+    config.createVirtualRoomBlind = config.createVirtualRoomBlind ?? true
+    config.createDiscreteBlinds = config.createDiscreteBlinds ?? true
+    config.prefixRoomNameToBlindName = config.prefixRoomNameToBlindName ?? true
+    config.topDownBottomUpBehavior = config.topDownBottomUpBehavior ?? 'topDown'
+    config.port = config.port ?? Controller.DEFAULT_PORT
+    this.log.debug('config', this.config)
   }
 }

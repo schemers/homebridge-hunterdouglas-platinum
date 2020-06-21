@@ -12,9 +12,9 @@ interface ControllerOptions {
 export class Controller {
   static DEFAULT_PORT = 522
 
-  private log: Logger
-  private ip_address: string
-  private port: number = Controller.DEFAULT_PORT
+  private readonly log: Logger
+  private readonly ip_address: string
+  private readonly port: number = Controller.DEFAULT_PORT
 
   constructor(settings: ControllerOptions) {
     this.log = settings.log
@@ -277,9 +277,8 @@ class Connection extends EventEmitter {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _handleClose(_hadError: boolean) {
-    //this.socketClosed = true
-  }
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  _handleClose(_hadError: boolean) {}
 
   _handleTimeout() {
     this.socket.destroy()
