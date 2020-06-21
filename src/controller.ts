@@ -268,7 +268,6 @@ class Connection extends EventEmitter {
   }
 
   _handleReady() {
-    this.log.debug('_handleReady')
     this._readLine().then(line => {
       if (!line.endsWith(EXPECTED_HELLO)) {
         this.log.warn('_handleReady unexpected hello', line)
@@ -288,7 +287,6 @@ class Connection extends EventEmitter {
   }
 
   _handleError(err: Error) {
-    this.log.error('_handleError:', err)
     this.socket.destroy()
     this.emit('error', err)
   }
