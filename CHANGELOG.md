@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## V2.0.0 - 2020-6-21
+
+- **MAJOR RELEASE: potentially breaking changes**
+
+### Added
+
+- rewrite in Typescript to provide much cleaner/safer base
+- minimum of Homebridge 1.1.1 is required
+- support DynamicPlatformPlugin, which provides:
+  - caching/persisting of accessories, so if bridge is unavailable when server starts the previous configured shades will remain
+  - the ability to retry obtaining the initial config from controller during startup
+- try to cleanup handling of the way characteristics are set/get/updated
+
 ## V1.4.3 - 2020-6-19
 
 ### Fixed
