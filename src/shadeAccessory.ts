@@ -58,19 +58,17 @@ export class ShadeAccessory {
     // in this example we are using the name we stored in the `accessory.context` in the `discoverDevices` method.
     this.service.setCharacteristic(this.platform.Characteristic.Name, this.context.displayName)
 
-    // each service must implement at-minimum the "required characteristics" for the given service type
-
     // register handlers for the CurrentPosition Characteristic
     this.service
       .getCharacteristic(this.platform.Characteristic.CurrentPosition)
-      .on('get', this.getCurrentPosition.bind(this)) // GET - bind to the `getCurrentPosition` method below
+      .on('get', this.getCurrentPosition.bind(this))
 
     // register handlers for the TargetPosition Characteristic
     this.service
       .getCharacteristic(this.platform.Characteristic.TargetPosition)
-      .on('set', this.setTargetPosition.bind(this)) // SET - bind to the `setTargetPosition` method below
+      .on('set', this.setTargetPosition.bind(this))
 
-    // just update state to stopped
+    // update position state to stopped (and leave it there)
     this.service.updateCharacteristic(
       this.platform.Characteristic.PositionState,
       this.platform.Characteristic.PositionState.STOPPED,
