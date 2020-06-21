@@ -154,7 +154,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
           displayName: name,
           shadeId: shadeId,
           roomId: room.id,
-          shadeTypeId: room.shadeType,
+          shadeFeatureId: this.getShadeFeatureId(room.shadeType),
         }
 
         this.shadeAccessories.set(shadeId, this.configureShadeAccessory(context))
@@ -171,7 +171,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
             displayName: room.name,
             shadeId: shadeId,
             roomId: roomId,
-            shadeTypeId: room.shadeType,
+            shadeFeatureId: this.getShadeFeatureId(room.shadeType),
           }
           this.shadeAccessories.set(shadeId, this.configureShadeAccessory(context))
         }
@@ -319,10 +319,9 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     return this.toHomeKitPosition(sum / shadeIds.length)
   }
 
-  setTargetPosition(shadeId: string, shadeFeatureId: string, position: number) {
-    this.log.debug('setTargetPosition ', shadeId, shadeFeatureId, position)
-
-    let handle = this.pendingSetTimer.get(shadeId)
+  setTargetPosition(context: ShadeAccessoryContext, position: number) {
+    this.log.debug('setTargetPosition ', context.shadeId, context.shadeFeatureId, position)
+    let handle = this.pendingSetTimer.get(context.shadeId)
     if (handle) {
       clearTimeout(handle)
     }
@@ -330,26 +329,45 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     handle = setTimeout(async () => {
       try {
         // delete ourselves from pendingSetTimer
-        this.pendingSetTimer.delete(shadeId)
+        this.pendingSetTimer.delete(context.shadeId)
         const nativePosition = this.toNativePosition(position)
-        this.log.debug(
-          'platform.setTargetPosition:',
-          shadeId,
-          shadeFeatureId,
+        this.log.info(
+          'setTargetPosition:',
           position,
+          'name:',
+          context.displayName,
+          'id:',
+          context.shadeId,
+          'feature:',
+          context.shadeFeatureId,
+        )
+        await this._setTargetPositionThrottled(
+          context.shadeId,
+          context.shadeFeatureId,
           nativePosition,
         )
-        await this._setTargetPositionThrottled(shadeId, shadeFeatureId, nativePosition)
-        this.log.debug('did send ->', shadeId, position)
+
         // trigger refresh after setting. call _refreshStatus
         // instead of _refreshAccessories so we definitely fetch fresh values
         await this._refreshStatus()
-        this.log.debug('did refresh after set ->', shadeId, position)
       } catch (err) {
         this.log.error('unable to set blind position', err)
       }
     }, this.config.setPositionDelayMsecs)
-    this.pendingSetTimer.set(shadeId, handle)
+    this.pendingSetTimer.set(context.shadeId, handle)
+  }
+
+  getShadeFeatureId(shadeTypeId: string) {
+    // Default feature is bottom-up - Feature ID: "04"
+    let shadeFeatureId = '04'
+    // Special handling for top-down-bottom-up shades, which can be detected from the room's shadeTypeId
+    // For top-down-bottom-up shades (shadeTypeId 02 or 13), use the top-down feature - Feature ID: "18"
+    if (shadeTypeId === '02' || shadeTypeId === '13') {
+      if (this.config.topDownBottomUpBehavior === 'topDown') {
+        shadeFeatureId = '18'
+      }
+    }
+    return shadeFeatureId
   }
 
   generateUUID(accessorySalt: string) {

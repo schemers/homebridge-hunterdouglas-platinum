@@ -9,7 +9,7 @@ import {
 import { HunterDouglasPlatform } from './platform'
 
 export type ShadeAccessoryContext = Record<
-  'displayName' | 'shadeId' | 'roomId' | 'shadeTypeId',
+  'displayName' | 'shadeId' | 'roomId' | 'shadeFeatureId',
   string
 >
 
@@ -87,12 +87,7 @@ export class ShadeAccessory {
       this.context.shadeId,
       this.context.displayName,
     )
-
-    this.platform.setTargetPosition(
-      this.context.shadeId,
-      this.getShadeFeatureId(this.context),
-      value as number,
-    )
+    this.platform.setTargetPosition(this.context, value as number)
     callback(null)
   }
 
@@ -128,19 +123,6 @@ export class ShadeAccessory {
     } else {
       callback(Error('unable to get CurrentPosition for ' + this.context.shadeId), undefined)
     }
-  }
-
-  public getShadeFeatureId(context: ShadeAccessoryContext) {
-    // Default feature is bottom-up - Feature ID: "04"
-    let shadeFeatureId = '04'
-    // Special handling for top-down-bottom-up shades, which can be detected from the room's shadeTypeId
-    // For top-down-bottom-up shades (shadeTypeId 02 or 13), use the top-down feature - Feature ID: "18"
-    if (context.shadeTypeId === '02' || context.shadeTypeId === '13') {
-      if (this.platform.config.topDownBottomUpBehavior === 'topDown') {
-        shadeFeatureId = '18'
-      }
-    }
-    return shadeFeatureId
   }
 
   public updateCurrentPosition(position: number) {
