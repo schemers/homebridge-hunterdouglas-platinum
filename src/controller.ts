@@ -380,17 +380,17 @@ export class ControllerConfig {
       } else if ((match = LED_RE.exec(line))) {
         this.ledBrightness = Number(match[1])
       } else if ((match = HOME_RE.exec(line))) {
-        this.homeName = match[1]
+        this.homeName = match[1].trim()
       } else if ((match = ROOM_RE.exec(line))) {
         const id = String(match[1]).padStart(2, '0')
         const shadeTypeId = String(match[2]).padStart(2, '0')
-        const name = match[3]
+        const name = match[3].trim()
         const room = new Room(id, shadeTypeId, name, Array<string>())
         this.rooms.set(id, room)
       } else if ((match = SHADE_RE.exec(line))) {
         const id = String(match[1]).padStart(2, '0')
         const roomId = String(match[2]).padStart(2, '0')
-        const name = match[3]
+        const name = match[3].trim()
         const shade = new Shade(id, name, roomId)
         this.shades.set(id, shade)
         const room = this.rooms.get(roomId)
