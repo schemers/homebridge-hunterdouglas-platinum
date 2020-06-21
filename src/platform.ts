@@ -188,7 +188,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       accessory => !activeIds.includes(accessory.UUID),
     )
 
-    if (staleAccessories.length > 0) {
+    if (staleAccessories.length) {
       const staleNames = staleAccessories.map(accessory => accessory.displayName)
       this.log.info('unregistering accessories', staleNames)
       this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, staleAccessories)
