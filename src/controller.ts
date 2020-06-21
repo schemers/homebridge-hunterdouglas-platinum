@@ -18,9 +18,7 @@ export class Controller {
     private readonly log: Logger,
     private readonly ip_address: string,
     private readonly port: number = Controller.DEFAULT_PORT,
-  ) {
-    // test
-  }
+  ) {}
 
   /**
    * returns the `Config` object on success

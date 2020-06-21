@@ -49,7 +49,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     public readonly config: PlatformConfig,
     public readonly api: API,
   ) {
-    this.log.debug('Finished initializing platform:', PLATFORM_NAME)
+    this.log.debug('Finished initializing platform', PLATFORM_NAME)
 
     this.applyConfigDefaults(config)
     this.controller = new Controller(this.log, this.config.ip_address, this.config.port)
@@ -110,19 +110,17 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       .then(config => {
         this.controllerConfig = config
         this.log.debug('got shade config', this.controllerConfig)
-
         this.log.info(
-          'connected:',
-          this.controllerConfig.deviceId,
-          this.controllerConfig.softwareVersion,
-          '(discoverDevices)',
+          `discoverDevices connected: ${this.controllerConfig.deviceId} ${this.controllerConfig.softwareVersion}`,
         )
         this.setupDiscoveredAccessories(this.controllerConfig)
       })
       .catch(err => {
         // on error, start another timeout with backoff
         const timeout = this.backoff(retryAttempt, pollingInterval)
-        this.log.error('discoverDevices retryAttempt:', retryAttempt, 'timeout:', timeout, err)
+        this.log.error(
+          `discoverDevices retryAttempt: ${retryAttempt} timeout: ${timeout} error: ${err}`,
+        )
         setTimeout(() => this.discoverDevices(retryAttempt + 1), timeout * 1000)
       })
   }
@@ -148,16 +146,15 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
           continue
         }
 
-        const name = prefixName ? room.name + ' ' + shade.name : shade.name
-
-        const context: ShadeAccessoryContext = {
-          displayName: name,
-          shadeId: shadeId,
-          roomId: room.id,
-          shadeFeatureId: this.getShadeFeatureId(room.shadeType),
-        }
-
-        this.shadeAccessories.set(shadeId, this.configureShadeAccessory(context))
+        this.shadeAccessories.set(
+          shadeId,
+          this.configureShadeAccessory({
+            displayName: prefixName ? room.name + ' ' + shade.name : shade.name,
+            shadeId: shadeId,
+            roomId: room.id,
+            shadeFeatureId: this.getShadeFeatureId(room.shadeType),
+          }),
+        )
       }
     }
 
@@ -167,13 +164,15 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
         // only create virtual room shades if more than one shade in the room
         if (room.shadeIds.length > 1) {
           const shadeId = room.shadeIds.sort().join(',')
-          const context: ShadeAccessoryContext = {
-            displayName: room.name,
-            shadeId: shadeId,
-            roomId: roomId,
-            shadeFeatureId: this.getShadeFeatureId(room.shadeType),
-          }
-          this.shadeAccessories.set(shadeId, this.configureShadeAccessory(context))
+          this.shadeAccessories.set(
+            shadeId,
+            this.configureShadeAccessory({
+              displayName: room.name,
+              shadeId: shadeId,
+              roomId: roomId,
+              shadeFeatureId: this.getShadeFeatureId(room.shadeType),
+            }),
+          )
         }
       }
     }
@@ -333,16 +332,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
         // delete ourselves from pendingSetTimer
         this.pendingSetTimer.delete(context.shadeId)
         const nativePosition = this.toNativePosition(position)
-        this.log.info(
-          'setTargetPosition:',
-          position,
-          'name:',
-          context.displayName,
-          'id:',
-          context.shadeId,
-          'feature:',
-          context.shadeFeatureId,
-        )
+        this.log.debug('setTargetPosition:', position, context)
         await this._setTargetPositionThrottled(
           context.shadeId,
           context.shadeFeatureId,
