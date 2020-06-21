@@ -5,6 +5,9 @@ src
 
 # ------------- Defaults ------------- #
 
+# prettier
+.prettierrc
+
 # eslint
 .eslintrc
 
