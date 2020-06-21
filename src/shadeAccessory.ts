@@ -84,7 +84,7 @@ export class ShadeAccessory {
   setTargetPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     this.platform.log.debug('setTargetPosition:', value, this.context)
     this.platform.setTargetPosition(this.context, value as number)
-    callback(null)
+    callback(null, value)
   }
 
   /**
