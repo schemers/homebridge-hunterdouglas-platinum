@@ -276,8 +276,7 @@ class Connection extends EventEmitter {
     })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  // eslint-disable-next-line @typescript-eslint/no-empty-function,@typescript-eslint/no-unused-vars
   _handleClose(_hadError: boolean) {}
 
   _handleTimeout() {
