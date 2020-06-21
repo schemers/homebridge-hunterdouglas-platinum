@@ -5,8 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
-
 ## V2.0.0 - 2020-6-21
 
 - **MAJOR RELEASE: potentially breaking changes**
@@ -18,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - support DynamicPlatformPlugin, which provides:
   - caching/persisting of accessories, so if bridge is unavailable when server starts the previous configured shades will remain
   - the ability to retry obtaining the initial config from controller during startup
-- try to cleanup handling of the way characteristics are set/get/updated
+- try to cleanup set/get/updating of characteristics
 
 ## V1.4.3 - 2020-6-19
 
