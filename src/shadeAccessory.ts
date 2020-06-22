@@ -82,7 +82,7 @@ export class ShadeAccessory {
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
   setTargetPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    this.platform.log.debug('setTargetPosition:', value, this.context)
+    this.platform.log.debug('setTargetPosition:', value, this.context.shadeId)
     this.platform.setTargetPosition(this.context, value as number)
     callback(null, value)
   }
@@ -102,8 +102,7 @@ export class ShadeAccessory {
      */
   getCurrentPosition(callback: CharacteristicGetCallback) {
     const value = this.platform.getShadeCurrentHomeKitPosition(this.context.shadeId)
-
-    this.platform.log.debug('getCurrentPosition:', value, this.context)
+    this.platform.log.debug('getCurrentPosition:', value, this.context.shadeId)
 
     // you must call the callback function
     // the first argument should be null if there were no errors
@@ -117,12 +116,12 @@ export class ShadeAccessory {
   }
 
   public updateCurrentPosition(position: number) {
-    this.platform.log.debug('updateCurrentPosition:', position, this.context)
+    this.platform.log.debug('updateCurrentPosition:', position, this.context.shadeId)
     this.service.updateCharacteristic(this.platform.Characteristic.CurrentPosition, position)
   }
 
   public updateTargetPosition(position: number) {
-    this.platform.log.debug('updateTargetPosition:', position, this.context)
+    this.platform.log.debug('updateTargetPosition:', position, this.context.shadeId)
     this.service.updateCharacteristic(this.platform.Characteristic.TargetPosition, position)
   }
 }

@@ -42,8 +42,8 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   // for throttling set requests
   private _setTargetPositionThrottled: pThrottle.ThrottledFunction<[string, string, number], void>
 
-  // set if we have an outstanding refresh
-  private pendingRefreshPromise?: Promise<null>
+  // the time (from Date.now()) when we last initiated or did a refresh
+  private lastRefreshTime = 0
 
   // used to debounce multiple sets to the same shadeId
   private pendingSetTimer = new Map<string, NodeJS.Timeout>()
@@ -235,7 +235,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   _pollForStatus(retryAttempt: number) {
     const pollingInterval = this.config.statusPollingSeconds
 
-    this._refreshAccessoryValues()
+    this._refreshStatus()
       .then(() => {
         // on success, start another timeout at normal pollingInterval
         this.log.debug('_pollForStatus success, retryAttempt:', retryAttempt)
@@ -249,29 +249,6 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       })
   }
 
-  // refresh all accessories
-  async _refreshAccessoryValues() {
-    // if there already is a pending promise, just return it
-    if (this.pendingRefreshPromise) {
-      this.log.debug('re-using existing pendingRefreshPromise')
-    } else {
-      this.log.debug('creating new pendingRefreshPromise')
-      this.pendingRefreshPromise = this._refreshStatus()
-      this.pendingRefreshPromise
-        // this catch is needed since we have a finally,
-        // without the catch we'd get an unhandled promise rejection error
-        .catch(err => {
-          // log at debug level since we are logging at error in another location
-          this.log.debug('_refreshAccessoryValues', err)
-        })
-        .finally(() => {
-          this.log.debug('clearing pendingRefreshPromise')
-          this.pendingRefreshPromise = undefined
-        })
-    }
-    return this.pendingRefreshPromise
-  }
-
   /** gets status,  updates accessories, and resolves */
   async _refreshStatus() {
     try {
@@ -279,12 +256,13 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       this.log.debug('connected:', this.controllerConfig?.deviceId, '(getStatus)')
       // update all values
       for (const [shadeId, accessory] of this.shadeAccessories) {
-        const position = this.getShadeCurrentHomeKitPosition(shadeId)
+        const position = this.computeShadeCurrentHomeKitPosition(shadeId)
         if (position !== undefined) {
           accessory.updateCurrentPosition(position)
           accessory.updateTargetPosition(position)
         }
       }
+      this.lastRefreshTime = Date.now()
       return null
     } catch (err) {
       this.shadeStatus = undefined
@@ -292,7 +270,35 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     }
   }
 
+  /** refresh if values are "stale" */
+  refreshIfNeeded() {
+    const now = Date.now()
+    if (now - this.lastRefreshTime > 15 * 1000) {
+      this.log.debug('triggering refresh')
+      // set now, so we don't trigger multiple...
+      this.lastRefreshTime = now
+      this._refreshStatus()
+        .then(() => {
+          this.log.debug('refreshIfNeeded _refreshStatus success')
+        })
+        .catch(err => {
+          this.log.error('refreshIfNeeded', err)
+        })
+    } else {
+      this.log.debug('not triggering refresh')
+    }
+  }
+
+  /**
+   * This will return the currently cached copy of the shade value and initiate a refresh if needed
+   * @param shadeId requested shadeId
+   */
   getShadeCurrentHomeKitPosition(shadeId: string): number | undefined {
+    this.refreshIfNeeded()
+    return this.computeShadeCurrentHomeKitPosition(shadeId)
+  }
+
+  computeShadeCurrentHomeKitPosition(shadeId: string): number | undefined {
     if (this.shadeStatus === undefined) {
       this.log.warn('getShadeCurrentHomeKitPosition no shade status found')
       return undefined
