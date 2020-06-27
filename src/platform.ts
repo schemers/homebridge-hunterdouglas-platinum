@@ -248,7 +248,9 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       .catch(err => {
         // on error, start another timeout with backoff
         const timeout = this.backoff(retryAttempt, pollingInterval)
-        this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
+        if (retryAttempt > 0) {
+          this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
+        }
         setTimeout(() => this.pollForStatus(retryAttempt + 1), timeout * 1000)
       })
   }
