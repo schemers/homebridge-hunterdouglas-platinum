@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- only log poll errors if retry attempt is >0 to cut done on occasional `ECONNRESET` error messages
+- only log poll errors if retry attempt is >0 to cut down on occasional `ECONNRESET` error messages
 
 ## V2.0.4 - 2020-6-27
 
