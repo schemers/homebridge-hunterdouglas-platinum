@@ -1,11 +1,13 @@
 import {
   API,
+  WithUUID,
   DynamicPlatformPlugin,
   Logger,
   PlatformAccessory,
   PlatformConfig,
   Service,
   Characteristic,
+  CharacteristicGetCallback,
 } from 'homebridge'
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings'
@@ -14,6 +16,8 @@ import { ShadeAccessory, ShadeAccessoryContext } from './shadeAccessory'
 import { Controller, ControllerConfig, ShadeStatus } from './controller'
 
 import pThrottle from 'p-throttle'
+
+type CharacteristicType = WithUUID<{ new (): Characteristic }>
 
 /**
  * HomebridgePlatform
@@ -83,7 +87,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     })
   }
 
-  discoverDevices(retryAttempt: number) {
+  private discoverDevices(retryAttempt: number) {
     // test
     this.log.info('discoverDevices')
 
@@ -109,7 +113,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       })
   }
 
-  setupDiscoveredAccessories(controllerConfig: ControllerConfig) {
+  private setupDiscoveredAccessories(controllerConfig: ControllerConfig) {
     // discrete shades first
     if (this.config.createDiscreteBlinds) {
       const prefixName = this.config.prefixRoomNameToBlindName
@@ -175,7 +179,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
 
     // if we found any accessories,  start polling for status
     if (this.shadeAccessories.size) {
-      this._pollForStatus(0)
+      this.pollForStatus(0)
     }
   }
 
@@ -183,14 +187,14 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
    * This function is invoked when homebridge restores cached accessories from disk at startup.
    * It should be used to setup event handlers for characteristics and update respective values.
    */
-  configureAccessory(accessory: PlatformAccessory) {
+  public configureAccessory(accessory: PlatformAccessory) {
     this.log.info('Loading accessory from cache:', accessory.displayName)
 
     // add the restored accessory to the accessories cache so we can track if it has already been registered
     this.restoredAccessories.push(accessory)
   }
 
-  configureShadeAccessory(context: ShadeAccessoryContext): ShadeAccessory {
+  private configureShadeAccessory(context: ShadeAccessoryContext): ShadeAccessory {
     // generate a unique id for this shade based on context
     const uuid = ShadeAccessory.generateUUID(this, context)
 
@@ -232,26 +236,27 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   }
 
   /** start polling process with truncated exponential backoff: https://cloud.google.com/storage/docs/exponential-backoff */
-  _pollForStatus(retryAttempt: number) {
+  private pollForStatus(retryAttempt: number) {
     const pollingInterval = this.config.statusPollingSeconds
 
-    this._refreshStatus()
+    this.refreshStatus()
       .then(() => {
         // on success, start another timeout at normal pollingInterval
         this.log.debug('_pollForStatus success, retryAttempt:', retryAttempt)
-        setTimeout(() => this._pollForStatus(0), pollingInterval * 1000)
+        setTimeout(() => this.pollForStatus(0), pollingInterval * 1000)
       })
       .catch(err => {
         // on error, start another timeout with backoff
         const timeout = this.backoff(retryAttempt, pollingInterval)
         this.log.error('_pollForStatus retryAttempt:', retryAttempt, 'timeout:', timeout, err)
-        setTimeout(() => this._pollForStatus(retryAttempt + 1), timeout * 1000)
+        setTimeout(() => this.pollForStatus(retryAttempt + 1), timeout * 1000)
       })
   }
 
   /** gets status,  updates accessories, and resolves */
-  async _refreshStatus() {
+  private async refreshStatus() {
     try {
+      this.lastRefreshTime = Date.now()
       this.shadeStatus = await this.controller.getStatus()
       this.log.debug('connected:', this.controllerConfig?.deviceId, '(getStatus)')
       // update all values
@@ -262,7 +267,6 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
           accessory.updateTargetPosition(position)
         }
       }
-      this.lastRefreshTime = Date.now()
       return null
     } catch (err) {
       this.shadeStatus = undefined
@@ -270,35 +274,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  /** refresh if values are "stale" */
-  refreshIfNeeded() {
-    const now = Date.now()
-    if (now - this.lastRefreshTime > 15 * 1000) {
-      this.log.debug('triggering refresh')
-      // set now, so we don't trigger multiple...
-      this.lastRefreshTime = now
-      this._refreshStatus()
-        .then(() => {
-          this.log.debug('refreshIfNeeded _refreshStatus success')
-        })
-        .catch(err => {
-          this.log.error('refreshIfNeeded', err)
-        })
-    } else {
-      this.log.debug('not triggering refresh')
-    }
-  }
-
-  /**
-   * This will return the currently cached copy of the shade value and initiate a refresh if needed
-   * @param shadeId requested shadeId
-   */
-  getShadeCurrentHomeKitPosition(shadeId: string): number | undefined {
-    this.refreshIfNeeded()
-    return this.computeShadeCurrentHomeKitPosition(shadeId)
-  }
-
-  computeShadeCurrentHomeKitPosition(shadeId: string): number | undefined {
+  private computeShadeCurrentHomeKitPosition(shadeId: string): number | undefined {
     if (this.shadeStatus === undefined) {
       this.log.warn('getShadeCurrentHomeKitPosition no shade status found')
       return undefined
@@ -310,7 +286,35 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     return this.toHomeKitPosition(sum / shadeIds.length)
   }
 
-  setTargetPosition(context: ShadeAccessoryContext, position: number) {
+  /** refresh if cached values are "stale" */
+  private refreshIfNeeded(): boolean {
+    const now = Date.now()
+    if (now - this.lastRefreshTime > 15 * 1000) {
+      // set now, so we don't trigger multiple...
+      this.lastRefreshTime = now
+      this.refreshStatus()
+        .catch(err => {
+          this.log.error('refreshIfNeeded', err)
+        })
+      return true
+    } else {
+      return false
+    }
+  }
+
+  /** convenience function to add an `on('get')` handler which refreshes accessory values if needed  */
+  public triggersRefreshIfNeded(service: Service, type: CharacteristicType) {
+    const characteristic = service.getCharacteristic(type)
+    characteristic.on('get', (callback: CharacteristicGetCallback) => {
+      // just return current cached value, and refresh if needed
+      callback(null, characteristic.value)
+      if (this.refreshIfNeeded()) {
+        this.log.debug('triggered refresh on get', service.displayName, characteristic.displayName)
+      }
+    })
+  }
+
+  public setTargetPosition(context: ShadeAccessoryContext, position: number) {
     this.log.debug('setTargetPosition ', context.shadeId, context.shadeFeatureId, position)
     let handle = this.pendingSetTimer.get(context.shadeId)
     if (handle) {
@@ -331,7 +335,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
 
         // trigger refresh after setting. call _refreshStatus
         // instead of _refreshAccessories so we definitely fetch fresh values
-        await this._refreshStatus()
+        await this.refreshStatus()
       } catch (err) {
         this.log.error('unable to set blind position', err)
       }
@@ -339,7 +343,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     this.pendingSetTimer.set(context.shadeId, handle)
   }
 
-  getShadeFeatureId(shadeTypeId: string) {
+  private getShadeFeatureId(shadeTypeId: string) {
     // Default feature is bottom-up - Feature ID: "04"
     let shadeFeatureId = '04'
     // Special handling for top-down-bottom-up shades, which can be detected from the room's shadeTypeId
@@ -352,7 +356,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     return shadeFeatureId
   }
 
-  generateUUID(accessorySalt: string) {
+  public generateUUID(accessorySalt: string) {
     if (this.controllerConfig !== undefined) {
       return this.api.hap.uuid.generate(this.controllerConfig.deviceId + ':' + accessorySalt)
     } else {
@@ -364,7 +368,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   /**
    * convert native shade position (0-255) to HomeKit (0-100)
    */
-  toHomeKitPosition(pos: number): number {
+  private toHomeKitPosition(pos: number): number {
     return Math.round((pos / 255) * 100)
   }
 
@@ -374,16 +378,16 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
    * @param {number} pos
    * @memberof HunterDouglasPlatinumPlatform
    */
-  toNativePosition(pos: number): number {
+  private toNativePosition(pos: number): number {
     return Math.round((pos / 100) * 255)
   }
 
-  backoff(retryAttempt: number, maxTime: number): number {
+  private backoff(retryAttempt: number, maxTime: number): number {
     retryAttempt = Math.max(retryAttempt, 1)
     return Math.min(Math.pow(retryAttempt - 1, 2) + Math.random(), maxTime)
   }
 
-  accessoryInfo(): {
+  public accessoryInfo(): {
     manufacturer: string
     model: string
     serialNumber: string
@@ -406,7 +410,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     }
   }
 
-  applyConfigDefaults(config: PlatformConfig) {
+  private applyConfigDefaults(config: PlatformConfig) {
     // apply defaults
     config.statusPollingSeconds = config.statusPollingSeconds ?? 60
     config.setPositionDelayMsecs = config.setPositionDelayMsecs ?? 2500

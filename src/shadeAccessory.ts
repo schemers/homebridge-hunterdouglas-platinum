@@ -3,7 +3,6 @@ import {
   PlatformAccessory,
   CharacteristicValue,
   CharacteristicSetCallback,
-  CharacteristicGetCallback,
 } from 'homebridge'
 
 import { HunterDouglasPlatform } from './platform'
@@ -52,10 +51,7 @@ export class ShadeAccessory {
     // set the service name, this is what is displayed as the default name on the Home app
     this.service.setCharacteristic(this.platform.Characteristic.Name, this.context.displayName)
 
-    // register handlers for the CurrentPosition Characteristic
-    this.service
-      .getCharacteristic(this.platform.Characteristic.CurrentPosition)
-      .on('get', this.getCurrentPosition.bind(this))
+    this.platform.triggersRefreshIfNeded(this.service, this.platform.Characteristic.CurrentPosition)
 
     // register handlers for the TargetPosition Characteristic
     this.service
@@ -81,38 +77,10 @@ export class ShadeAccessory {
    * Handle "SET" requests from HomeKit
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
-  setTargetPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
+  private setTargetPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
     this.platform.log.debug('setTargetPosition:', value, this.context.shadeId)
     this.platform.setTargetPosition(this.context, value as number)
     callback(null, value)
-  }
-
-  /**
-     * Handle the "GET" requests from HomeKit
-     * These are sent when HomeKit wants to know the current state of the accessory, for example, checking if a Light bulb is on.
-     * 
-     * GET requests should return as fast as possbile. A long delay here will result in
-     * HomeKit being unresponsive and a bad user experience in general.
-     * 
-     * If your device takes time to respond you should update the status of your device
-     * asynchronously instead using the `updateCharacteristic` method instead.
-  
-     * @example
-     * this.service.updateCharacteristic(this.platform.Characteristic.On, true)
-     */
-  getCurrentPosition(callback: CharacteristicGetCallback) {
-    const value = this.platform.getShadeCurrentHomeKitPosition(this.context.shadeId)
-    this.platform.log.debug('getCurrentPosition:', value, this.context.shadeId)
-
-    // you must call the callback function
-    // the first argument should be null if there were no errors
-    // the second argument should be the value to return
-
-    if (value !== undefined) {
-      callback(null, value)
-    } else {
-      callback(Error('unable to get CurrentPosition for ' + this.context.shadeId), undefined)
-    }
   }
 
   public updateCurrentPosition(position: number) {

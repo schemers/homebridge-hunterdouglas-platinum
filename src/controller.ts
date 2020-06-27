@@ -252,7 +252,6 @@ class Connection extends EventEmitter {
   }
 
   async _readLine(): Promise<string> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     return new Promise<string>((resolve, _reject) => {
       // lets see if a line is already available, and just return it
       const line = this._popLineFromData()
@@ -276,7 +275,7 @@ class Connection extends EventEmitter {
     })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function,@typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   _handleClose(_hadError: boolean) {}
 
   _handleTimeout() {
