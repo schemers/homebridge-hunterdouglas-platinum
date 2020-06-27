@@ -51,6 +51,7 @@ export class ShadeAccessory {
     // set the service name, this is what is displayed as the default name on the Home app
     this.service.setCharacteristic(this.platform.Characteristic.Name, this.context.displayName)
 
+    // trigger refresh if needed when HomeKit asks for this value
     this.platform.triggersRefreshIfNeded(this.service, this.platform.Characteristic.CurrentPosition)
 
     // register handlers for the TargetPosition Characteristic

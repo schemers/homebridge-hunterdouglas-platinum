@@ -292,10 +292,9 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     if (now - this.lastRefreshTime > 15 * 1000) {
       // set now, so we don't trigger multiple...
       this.lastRefreshTime = now
-      this.refreshStatus()
-        .catch(err => {
-          this.log.error('refreshIfNeeded', err)
-        })
+      this.refreshStatus().catch(err => {
+        this.log.error('refreshIfNeeded', err)
+      })
       return true
     } else {
       return false
