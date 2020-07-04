@@ -6,7 +6,7 @@
 
 ## Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
-<img src="https://i.imgur.com/g9Mwn3S.jpg" width="300">
+<img src="https://user-images.githubusercontent.com/249172/86522462-ee9a4d80-be12-11ea-8cb2-14f7385bf7ab.jpg" width="300">
 
 ## Requirements
 
