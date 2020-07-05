@@ -19,6 +19,13 @@ import pThrottle from 'p-throttle'
 
 type CharacteristicType = WithUUID<{ new (): Characteristic }>
 
+interface PendingSetCommand {
+  // context
+  context: ShadeAccessoryContext
+  // homekit position
+  position: number
+}
+
 /**
  * HomebridgePlatform
  * This class is the main constructor for your plugin, this is where you should
@@ -44,13 +51,16 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
   private shadeStatus?: ShadeStatus
 
   // for throttling set requests
-  private _setTargetPositionThrottled: pThrottle.ThrottledFunction<[string, string, number], void>
+  private _setTargetPositionThrottled: pThrottle.ThrottledFunction<[string[], string, number], void>
 
   // the time (from Date.now()) when we last initiated or did a refresh
   private lastRefreshTime = 0
 
   // used to debounce multiple sets to the same shadeId
-  private pendingSetTimer = new Map<string, NodeJS.Timeout>()
+  private debounceSetTimer?: NodeJS.Timeout
+
+  // pending set commands that will be executed after debounce timer
+  private pendingSetCommands = new Map<string, PendingSetCommand>()
 
   constructor(
     public readonly log: Logger,
@@ -69,8 +79,9 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
     })
 
     this._setTargetPositionThrottled = pThrottle(
-      (shadeId: string, shadeFeatureId: string, nativePosition: number) => {
-        return this.controller.setPosition(shadeId.split(','), shadeFeatureId, nativePosition)
+      (shadeIds: string[], shadeFeatureId: string, nativePosition: number) => {
+        //return Promise.resolve()
+        return this.controller.setPosition(shadeIds, shadeFeatureId, nativePosition)
       },
       1, // LIMIT to 1 call within interval
       config.setPositionThrottleRateMsecs,
@@ -207,7 +218,7 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
       this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName)
 
       // update the context if it has changed
-      if (!ShadeAccessory.sameContext(context, existingAccessory.context)) {
+      if (!ShadeAccessory.sameContext(context, <ShadeAccessoryContext>existingAccessory.context)) {
         existingAccessory.context = context
         this.log.info('Updating existing accessory:', context.displayName)
         this.api.updatePlatformAccessories([existingAccessory])
@@ -317,31 +328,44 @@ export class HunterDouglasPlatform implements DynamicPlatformPlugin {
 
   public setTargetPosition(context: ShadeAccessoryContext, position: number) {
     this.log.debug('setTargetPosition ', context.shadeId, context.shadeFeatureId, position)
-    let handle = this.pendingSetTimer.get(context.shadeId)
-    if (handle) {
-      clearTimeout(handle)
+    if (this.debounceSetTimer) {
+      clearTimeout(this.debounceSetTimer)
     }
 
-    handle = setTimeout(async () => {
+    this.debounceSetTimer = setTimeout(async () => {
       try {
-        // delete ourselves from pendingSetTimer
-        this.pendingSetTimer.delete(context.shadeId)
-        const nativePosition = this.toNativePosition(position)
-        this.log.debug('setTargetPosition:', position, context)
-        await this._setTargetPositionThrottled(
-          context.shadeId,
-          context.shadeFeatureId,
-          nativePosition,
-        )
+        this.debounceSetTimer = undefined
 
-        // trigger refresh after setting. call _refreshStatus
-        // instead of _refreshAccessories so we definitely fetch fresh values
-        await this.refreshStatus()
+        // group together all the contexts by same feature and position
+        const pendingSetCommandsList = Array.from(this.pendingSetCommands.values())
+        const groupedContexts = pendingSetCommandsList.reduce((result, pendingCommand) => {
+          const key = pendingCommand.context.shadeFeatureId + ':' + pendingCommand.position
+          if (!result.has(key)) {
+            result.set(key, new Array<ShadeAccessoryContext>())
+          }
+          result.get(key)?.push(pendingCommand.context)
+          return result
+        }, new Map<string, ShadeAccessoryContext[]>())
+
+        // now go through and send a throttled set position command for all blinds
+        // with the same position and feature
+        for (const [featureIdAndPos, contexts] of groupedContexts) {
+          const [featureId, positionStr] = featureIdAndPos.split(':')
+          const nativePosition = this.toNativePosition(parseInt(positionStr))
+          const allIds = contexts.map(context => context.shadeId).join(',')
+          const ids = [...new Set(allIds.split(','))]
+          this.log.debug('debounced setTargetPosition:', ids, featureId, position)
+          await this._setTargetPositionThrottled(ids, context.shadeFeatureId, nativePosition)
+          // trigger refresh after setting. call _refreshStatus
+          // instead of _refreshAccessories so we definitely fetch fresh values
+          await this.refreshStatus()
+        }
+        this.pendingSetCommands.clear()
       } catch (err) {
         this.log.error('unable to set blind position', err)
       }
     }, this.config.setPositionDelayMsecs)
-    this.pendingSetTimer.set(context.shadeId, handle)
+    this.pendingSetCommands.set(context.shadeId, { context: context, position: position })
   }
 
   private getShadeFeatureId(shadeTypeId: string) {

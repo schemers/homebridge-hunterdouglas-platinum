@@ -7,10 +7,12 @@ import {
 
 import { HunterDouglasPlatform } from './platform'
 
-export type ShadeAccessoryContext = Record<
-  'displayName' | 'shadeId' | 'roomId' | 'shadeFeatureId',
-  string
->
+export interface ShadeAccessoryContext {
+  displayName: string
+  shadeId: string
+  roomId: string
+  shadeFeatureId: string
+}
 
 /**
  * Shade Accessory
@@ -71,7 +73,7 @@ export class ShadeAccessory {
   }
 
   private get context(): ShadeAccessoryContext {
-    return this.accessory.context
+    return this.accessory.context as ShadeAccessoryContext
   }
 
   /**
@@ -79,7 +81,7 @@ export class ShadeAccessory {
    * These are sent when the user changes the state of an accessory, for example, turning on a Light bulb.
    */
   private setTargetPosition(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-    this.platform.log.debug('setTargetPosition:', value, this.context.shadeId)
+    this.platform.log.debug('shadeAccessory setTargetPosition:', this.context.shadeId, value)
     this.platform.setTargetPosition(this.context, value as number)
     callback(null, value)
   }
