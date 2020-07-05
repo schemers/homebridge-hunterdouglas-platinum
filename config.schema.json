@@ -62,7 +62,7 @@
         "title": "Prefix Room Name",
         "type": "boolean",
         "default": true,
-        "description": "Prefix the room name to each discrete blind name."
+        "description": "Prefix the room name to each discrete blind name. Default is true."
       },
       "visibleBlindNames": {
         "title": "Visible Blind Names",
@@ -83,5 +83,28 @@
         "description": "Choose the desired behavior for Top-Down / Bottom-Up shades.  If 'Top-Down' is specified, the slider will control the middle rail, and the shade will open downward.  If 'Bottom-Up' is specified, the slider will control the bottom rail, and the shade will open upward.  Default is 'Top-Down.'"
       }
     }
-  }
+  },
+  "layout": [
+    {
+      "type": "flex",
+      "items": ["ip_address", "port"]
+    },
+    {
+      "type": "fieldset",
+      "title": "Blind Options",
+      "expandable": true,
+      "items": [
+        "createVirtualRoomBlind",
+        "createDiscreteBlinds",
+        "prefixRoomNameToBlindName",
+        "topDownBottomUpBehavior"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Advanced",
+      "expandable": true,
+      "items": ["visibleBlindNames", "", "setPositionDelayMsecs", "setPositionThrottleRateMsecs"]
+    }
+  ]
 }

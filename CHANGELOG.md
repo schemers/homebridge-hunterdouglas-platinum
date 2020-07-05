@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - this allows grouping all shades being set to the same position (with the same feature id) into a single set command to the bridge
 
+- add `layout` to `config.schema.json` to better organize settings
+
 ## V2.0.5 - 2020-6-27
 
 ### Fixed
