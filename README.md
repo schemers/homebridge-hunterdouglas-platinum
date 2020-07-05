@@ -31,7 +31,7 @@ Configuration samples (edit `~/.homebridge/config.json`):
 
 Use this when you know the local static IP address.
 
-```
+```json
 "platforms": [
         {
             "platform": "HunterDouglasPlatinum",
@@ -57,6 +57,19 @@ Use this when you know the local static IP address.
 * `"visibleBlindNames"` Comma-seperated list of blind names (prefixed with room name) to make visible. All other blinds are ignored. Only used when `createDiscreteBlinds` is true.
 
 * `"topDownBottomUpBehavior"` Choose the desired behavior for Top-Down / Bottom-Up blinds. If `"topDown"` is specified, the slider will control the middle rail, and the blind will open downward. If `"bottomUp"` is specified, the slider will control the bottom rail, and the blind will open upward. Default is `"topDown"`. This setting has no effect on standard blinds (i.e., blinds with only "Bottom-Up" functionality).
+
+## Sample config
+
+```json
+{
+  "platform": "HunterDouglasPlatinum",
+  "ip_address": "192.168.86.143",
+  "statusPollingSeconds": 60,
+  "createVirtualRoomBlind": true,
+  "createDiscreteBlinds": true,
+  "prefixRoomNameToBlindName": true
+}
+```
 
 # Implemented HomeKit Accessory Types
 
