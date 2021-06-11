@@ -1,5 +1,7 @@
 # homebridge-hunterdouglas-platinum
 
+**Note**: I no longer have a platinum bridge so I am no longer maintaining this plugin. 6/11/21
+
 [![NPM version](https://img.shields.io/npm/v/homebridge-hunterdouglas-platinum)](https://npmjs.org/package/homebridge-hunterdouglas-platinum)
 ![License](https://img.shields.io/npm/l/homebridge-hunterdouglas-platinum)
 [![Downloads](https://img.shields.io/npm/dm/homebridge-hunterdouglas-platinum.svg)](https://npmjs.org/package/homebridge-hunterdouglas-platinum)
