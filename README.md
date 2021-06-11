@@ -1,10 +1,12 @@
 # homebridge-hunterdouglas-platinum
 
-**Note**: I no longer have a platinum bridge so I am no longer maintaining this plugin. 6/11/21
-
 [![NPM version](https://img.shields.io/npm/v/homebridge-hunterdouglas-platinum)](https://npmjs.org/package/homebridge-hunterdouglas-platinum)
 ![License](https://img.shields.io/npm/l/homebridge-hunterdouglas-platinum)
 [![Downloads](https://img.shields.io/npm/dm/homebridge-hunterdouglas-platinum.svg)](https://npmjs.org/package/homebridge-hunterdouglas-platinum)
+
+## Note
+
+I no longer have a platinum bridge, so I not maintaing/updating this plugin as of 6/11/21. If someone wants to fork and maintain I can update this REAMDE to point to a new repository.
 
 ## Hunter Douglas Platinum plug-in for [Homebridge](https://github.com/nfarina/homebridge)
 
